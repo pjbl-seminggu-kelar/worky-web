@@ -3,15 +3,39 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  useLocation,
+  useNavigate,
   useRouter,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { AUTH_TOKEN_KEY, ONBOARDING_COMPLETED_KEY } from "../lib/auth";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+
+const PUBLIC_PATHS = ["/onboarding", "/login", "/register"];
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api/");
+}
+
+const AUTH_REDIRECT_SCRIPT = `
+  try {
+    var path = window.location.pathname;
+    var onboardingDone = localStorage.getItem("${ONBOARDING_COMPLETED_KEY}") === "true";
+    var hasToken = Boolean(localStorage.getItem("${AUTH_TOKEN_KEY}"));
+    var isPublic = ${JSON.stringify(PUBLIC_PATHS)}.includes(path) || path.indexOf("/api/") === 0;
+
+    if (path === "/" && !onboardingDone) {
+      window.location.replace("/onboarding");
+    } else if (!isPublic && !hasToken) {
+      window.location.replace("/login");
+    }
+  } catch (_) {}
+`;
 
 function NotFoundComponent() {
   return (
@@ -109,6 +133,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: AUTH_REDIRECT_SCRIPT }} />
         {children}
         <Scripts />
       </body>
@@ -118,13 +143,36 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const publicRoute = isPublicPath(location.pathname);
+  const [allowedPath, setAllowedPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (publicRoute) return;
+
+    if (!localStorage.getItem(AUTH_TOKEN_KEY)) {
+      void navigate({ to: "/login", replace: true });
+      return;
+    }
+
+    setAllowedPath(location.pathname);
+  }, [location.pathname, navigate, publicRoute]);
+
+  const canRenderRoute = publicRoute || allowedPath === location.pathname;
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-stage">
         <div className="relative mx-auto min-h-screen w-full max-w-[430px] bg-background shadow-2xl">
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          {canRenderRoute ? (
+            <Outlet />
+          ) : (
+            <div className="grid min-h-dvh place-items-center">
+              <p className="font-display text-lg font-bold text-primary">Worky</p>
+            </div>
+          )}
         </div>
       </div>
     </QueryClientProvider>
