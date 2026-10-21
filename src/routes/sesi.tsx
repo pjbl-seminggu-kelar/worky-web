@@ -5,9 +5,9 @@ import { exercises } from "@/lib/workouts";
 export const Route = createFileRoute("/sesi")({
   head: () => ({
     meta: [
-      { title: "Sesi Latihan — Worky" },
+      { title: "Sesi Latihan | Worky" },
       { name: "description", content: "Sesi latihan dengan penghitung repetisi dan feedback form dari AI." },
-      { property: "og:title", content: "Sesi Latihan — Worky" },
+      { property: "og:title", content: "Sesi Latihan | Worky" },
       { property: "og:description", content: "Penghitung repetisi dan feedback form realtime." },
     ],
   }),

@@ -8,7 +8,7 @@ import { saveAuthSession, ONBOARDING_COMPLETED_KEY, type AuthResponse } from "@/
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Masuk — Worky" },
+      { title: "Masuk | Worky" },
       { name: "description", content: "Masuk ke Worky untuk melanjutkan progres latihanmu." },
     ],
   }),

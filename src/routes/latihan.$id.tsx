@@ -11,9 +11,9 @@ export const Route = createFileRoute("/latihan/$id")({
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: loaderData ? `${loaderData.ex.name} — Worky` : "Gerakan — Worky" },
+      { title: loaderData ? `${loaderData.ex.name} | Worky` : "Gerakan | Worky" },
       { name: "description", content: "Panduan gerakan, posisi kamera, dan poin pengecekan form." },
-      { property: "og:title", content: loaderData ? `${loaderData.ex.name} — Worky` : "Gerakan — Worky" },
+      { property: "og:title", content: loaderData ? `${loaderData.ex.name} | Worky` : "Gerakan | Worky" },
       { property: "og:description", content: "Panduan gerakan dan pengecekan form AI." },
     ],
   }),

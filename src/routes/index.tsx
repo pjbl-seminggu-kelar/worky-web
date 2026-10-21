@@ -8,12 +8,12 @@ import { AUTH_TOKEN_KEY, ONBOARDING_COMPLETED_KEY } from "@/lib/auth";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Beranda — Worky" },
+      { title: "Beranda | Worky" },
       {
         name: "description",
         content: "Ringkasan latihan, streak mingguan, dan rencana workout kamu di Worky.",
       },
-      { property: "og:title", content: "Beranda — Worky" },
+      { property: "og:title", content: "Beranda | Worky" },
       {
         property: "og:description",
         content: "Ringkasan latihan dan rencana workout kamu di Worky.",
@@ -91,7 +91,7 @@ function Index() {
           ))}
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          3 dari 4 sesi selesai — 1 lagi untuk capai target.
+          3 dari 4 sesi selesai - 1 lagi untuk capai target.
         </p>
       </section>
 

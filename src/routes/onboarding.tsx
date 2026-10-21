@@ -8,12 +8,12 @@ import type { GeneratePlanResponse } from "@/lib/workouts";
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
     meta: [
-      { title: "Atur Tujuan — Worky" },
+      { title: "Atur Tujuan | Worky" },
       {
         name: "description",
         content: "Tentukan tujuan, level, dan peralatan untuk workout plan personal.",
       },
-      { property: "og:title", content: "Atur Tujuan — Worky" },
+      { property: "og:title", content: "Atur Tujuan | Worky" },
       { property: "og:description", content: "Buat workout plan personal di Worky." },
     ],
   }),

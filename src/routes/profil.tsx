@@ -8,9 +8,9 @@ import { goalLabel } from "@/lib/workouts";
 export const Route = createFileRoute("/profil")({
   head: () => ({
     meta: [
-      { title: "Profil — Worky" },
+      { title: "Profil | Worky" },
       { name: "description", content: "Profil, statistik progres form, dan pengaturan Worky." },
-      { property: "og:title", content: "Profil — Worky" },
+      { property: "og:title", content: "Profil | Worky" },
       { property: "og:description", content: "Statistik progres dan pengaturan akun Worky." },
     ],
   }),

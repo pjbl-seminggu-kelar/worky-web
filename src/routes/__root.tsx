@@ -104,9 +104,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Worky — AI Workout Form Coach" },
+      { title: "Worky | AI Workout Form Coach" },
       { name: "description", content: "Cek form home workout kamu dengan AI." },
-      { property: "og:title", content: "Worky — AI Workout Form Coach" },
+      { property: "og:title", content: "Worky | AI Workout Form Coach" },
       { property: "og:description", content: "Cek form home workout kamu dengan AI." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

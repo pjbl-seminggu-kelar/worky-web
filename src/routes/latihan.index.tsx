@@ -6,9 +6,9 @@ import { BottomNav, PageHeader } from "@/components/BottomNav";
 export const Route = createFileRoute("/latihan/")({
   head: () => ({
     meta: [
-      { title: "Katalog Gerakan — Worky" },
+      { title: "Katalog Gerakan | Worky" },
       { name: "description", content: "Pilih gerakan home workout yang didukung pengecekan form AI." },
-      { property: "og:title", content: "Katalog Gerakan — Worky" },
+      { property: "og:title", content: "Katalog Gerakan | Worky" },
       { property: "og:description", content: "Gerakan home workout dengan pengecekan form AI." },
     ],
   }),

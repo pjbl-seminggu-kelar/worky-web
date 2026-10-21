@@ -9,7 +9,7 @@ import { saveAuthSession, type AuthResponse } from "@/lib/auth";
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
-      { title: "Daftar — Worky" },
+      { title: "Daftar | Worky" },
       {
         name: "description",
         content: "Buat akun Worky dan mulai tingkatkan kualitas form latihanmu.",
