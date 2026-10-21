@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { ChevronRight, Target, Dumbbell, Bell, Shield, Camera } from "lucide-react";
 import { BottomNav, PageHeader } from "@/components/BottomNav";
+import { AUTH_USER_KEY, type AuthUser } from "@/lib/auth";
+import { goalLabel } from "@/lib/workouts";
 
 export const Route = createFileRoute("/profil")({
   head: () => ({
@@ -16,15 +19,47 @@ export const Route = createFileRoute("/profil")({
 
 const bars = [62, 70, 68, 75, 80, 78, 86];
 
+const LEVEL_LABEL: Record<string, string> = {
+  BEGINNER: "Pemula",
+  INTERMEDIATE: "Menengah",
+  ADVANCED: "Lanjutan",
+};
+
 function Profile() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(AUTH_USER_KEY);
+      if (raw) setUser(JSON.parse(raw) as AuthUser);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const displayName = user?.displayName || "Badzlan Nur";
+  const initial = displayName.charAt(0).toUpperCase() || "B";
+  const levelText = user?.experienceLevel ? (LEVEL_LABEL[user.experienceLevel] ?? user.experienceLevel) : "Pemula";
+  const ageText = user?.age ? `${user.age} th` : "24 th";
+  const weightText = user?.weightKg ? `${user.weightKg} kg` : "68 kg";
+  const goalText = (user as unknown as { goal?: string })?.goal ? goalLabel((user as unknown as { goal?: string }).goal!) : "Bentuk tubuh";
+  const equipmentText = (user as unknown as { equipment?: string[] })?.equipment?.length
+    ? (user as unknown as { equipment?: string[] }).equipment!.join(", ")
+    : "Tanpa alat";
+  const reminderText = (user as unknown as { reminderTime?: string })?.reminderTime || "18:30";
+
   return (
     <div className="pb-28">
       <PageHeader title="Profil" />
       <div className="mx-5 mt-5 flex items-center gap-4">
-        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-secondary font-display text-2xl font-bold text-secondary-foreground">B</div>
+        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-secondary font-display text-2xl font-bold text-secondary-foreground">
+          {initial}
+        </div>
         <div className="min-w-0">
-          <p className="truncate text-lg font-bold">Badzlan Nur</p>
-          <p className="text-sm text-muted-foreground">Pemula · 24 th · 68 kg</p>
+          <p className="truncate text-lg font-bold">{displayName}</p>
+          <p className="text-sm text-muted-foreground">
+            {levelText} · {ageText} · {weightText}
+          </p>
         </div>
       </div>
 
@@ -42,7 +77,10 @@ function Profile() {
         <div className="mt-4 flex h-28 items-end gap-2">
           {bars.map((b, i) => (
             <div key={i} className="flex flex-1 flex-col items-center gap-1">
-              <div className={`w-full rounded-md ${i === bars.length - 1 ? "bg-primary" : "bg-muted"}`} style={{ height: `${b}%` }} />
+              <div
+                className={`w-full rounded-md ${i === bars.length - 1 ? "bg-primary" : "bg-muted"}`}
+                style={{ height: `${b}%` }}
+              />
               <span className="text-[10px] text-muted-foreground">M{i + 1}</span>
             </div>
           ))}
@@ -51,10 +89,10 @@ function Profile() {
 
       <div className="mx-5 mt-4 divide-y divide-border overflow-hidden rounded-2xl bg-card">
         {[
-          { icon: Target, label: "Tujuan latihan", value: "Bentuk tubuh", to: "/onboarding" as const },
-          { icon: Dumbbell, label: "Peralatan", value: "Tanpa alat", to: "/onboarding" as const },
+          { icon: Target, label: "Tujuan latihan", value: goalText, to: "/onboarding" as const },
+          { icon: Dumbbell, label: "Peralatan", value: equipmentText, to: "/onboarding" as const },
           { icon: Camera, label: "Kamera & kalibrasi", value: "", to: "/profil" as const },
-          { icon: Bell, label: "Pengingat", value: "18:30", to: "/profil" as const },
+          { icon: Bell, label: "Pengingat", value: reminderText, to: "/profil" as const },
           { icon: Shield, label: "Privasi data", value: "Video tidak disimpan", to: "/profil" as const },
         ].map(({ icon: Icon, label, value, to }) => (
           <Link key={label} to={to} className="flex items-center gap-3 px-4 py-3.5">

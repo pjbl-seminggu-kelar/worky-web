@@ -43,7 +43,7 @@ function Register() {
         body: form,
       });
       saveAuthSession(response);
-      await navigate({ to: "/", replace: true });
+      await navigate({ to: "/onboarding", replace: true });
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError

@@ -1,7 +1,121 @@
-import pushup from "@/assets/pushup.png";
-import squat from "@/assets/squat.png";
-import situp from "@/assets/situp.png";
-import plank from "@/assets/plank.png";
+import pushup from "/pushup.png";
+import squat from "/squat.png";
+import situp from "/situp.png";
+import plank from "/plank.png";
+
+/* ── API types for /plans/generate ── */
+
+export type PlanExercise = {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  equipmentRequired: string[];
+};
+
+export type WorkoutPlanItem = {
+  id: string;
+  planId: string;
+  exerciseId: string;
+  dayOfWeek: number; // 1 = Monday … 7 = Sunday
+  orderIndex: number;
+  sets: number;
+  targetReps: number | null;
+  targetDurationSeconds: number | null;
+  restSeconds: number;
+  notes: string | null;
+  exercise: PlanExercise;
+};
+
+export type WorkoutPlan = {
+  id: string;
+  userId: string;
+  name: string;
+  goal: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  workoutPlanItems: WorkoutPlanItem[];
+};
+
+export type GeneratePlanResponse = {
+  status: "success";
+  data: WorkoutPlan;
+};
+
+export const ACTIVE_PLAN_KEY = "worky:active-plan";
+
+/* ── Day helpers ── */
+
+const DAY_LABELS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"] as const;
+
+const GOAL_LABELS: Record<string, string> = {
+  WEIGHT_LOSS: "Turun berat",
+  MUSCLE_BUILDING: "Bentuk tubuh",
+  STRENGTH: "Kekuatan",
+  GENERAL_FITNESS: "Kebugaran",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  UPPER: "Upper Body",
+  LOWER: "Lower Body",
+  CORE: "Core",
+  FULL_BODY: "Full Body",
+};
+
+/** Convert goal enum to readable label */
+export function goalLabel(goal: string) {
+  return GOAL_LABELS[goal] ?? goal;
+}
+
+/** Convert API dayOfWeek (1=Mon…7=Sun) to label */
+export function dayLabel(dayOfWeek: number) {
+  return DAY_LABELS[(dayOfWeek - 1) % 7] ?? "?";
+}
+
+/** Format a WorkoutPlanItem into a readable target string */
+export function formatItemTarget(item: WorkoutPlanItem) {
+  if (item.targetDurationSeconds) {
+    return `${item.exercise.name} ${item.sets}×${item.targetDurationSeconds} dtk`;
+  }
+  return `${item.exercise.name} ${item.sets}×${item.targetReps ?? 0}`;
+}
+
+/** Group plan items by dayOfWeek and build display data for /plan page */
+export function buildPlanDays(plan: WorkoutPlan) {
+  const byDay = new Map<number, WorkoutPlanItem[]>();
+  for (const item of plan.workoutPlanItems) {
+    const existing = byDay.get(item.dayOfWeek) ?? [];
+    existing.push(item);
+    byDay.set(item.dayOfWeek, existing);
+  }
+
+  // Get today's dayOfWeek (JS: 0=Sun → we remap to 1=Mon…7=Sun)
+  const jsDay = new Date().getDay();
+  const todayDow = jsDay === 0 ? 7 : jsDay;
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const dow = i + 1;
+    const items = byDay.get(dow) ?? [];
+    // Sort by orderIndex
+    items.sort((a, b) => a.orderIndex - b.orderIndex);
+
+    const categories = items
+      .map((it) => CATEGORY_LABELS[it.exercise.category] ?? it.exercise.category)
+      .filter((v, idx, arr) => arr.indexOf(v) === idx);
+
+    return {
+      dayOfWeek: dow,
+      day: DAY_LABELS[i]!,
+      title: items.length > 0 ? categories.join(" + ") : "Istirahat",
+      items: items.map(formatItemTarget),
+      isToday: dow === todayDow,
+      planItems: items,
+    };
+  });
+}
+
+/* ── Static/mock data (kept for existing pages) ── */
 
 export const exercises = [
   { id: "push-up", name: "Push-up", img: pushup, target: "3 × 12 rep", score: 86 },

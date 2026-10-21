@@ -29,7 +29,9 @@ const AUTH_REDIRECT_SCRIPT = `
     var hasToken = Boolean(localStorage.getItem("${AUTH_TOKEN_KEY}"));
     var isPublic = ${JSON.stringify(PUBLIC_PATHS)}.includes(path) || path.indexOf("/api/") === 0;
 
-    if (path === "/" && !onboardingDone) {
+    if (path === "/" && !hasToken) {
+      window.location.replace("/register");
+    } else if (path === "/" && !onboardingDone) {
       window.location.replace("/onboarding");
     } else if (!isPublic && !hasToken) {
       window.location.replace("/login");

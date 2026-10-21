@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Eye, EyeOff, LoaderCircle, ScanLine } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
 type AuthLayoutProps = {
@@ -27,9 +27,7 @@ export function AuthLayout({
       </div>
 
       <div className="relative flex items-center gap-2">
-        <div className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground">
-          <ScanLine className="h-5 w-5" />
-        </div>
+        <img src="icon.png" alt="icon" width={27}/>
         <span className="font-display text-2xl font-extrabold">Worky</span>
       </div>
 

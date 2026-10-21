@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 
 import { AuthLayout, EmailField, PasswordToggle, SubmitButton } from "@/components/AuthLayout";
 import { apiFetch, ApiError } from "@/lib/api";
-import { saveAuthSession, type AuthResponse } from "@/lib/auth";
+import { saveAuthSession, ONBOARDING_COMPLETED_KEY, type AuthResponse } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -38,7 +38,8 @@ function Login() {
         body: form,
       });
       saveAuthSession(response);
-      await navigate({ to: "/", replace: true });
+      const destination = localStorage.getItem(ONBOARDING_COMPLETED_KEY) === "true" ? "/" : "/onboarding";
+      await navigate({ to: destination, replace: true });
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError

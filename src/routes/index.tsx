@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Check, Flame, Plus, ScanLine, Settings, CalendarDays, Camera } from "lucide-react";
+import { Check, Flame, Plus, Settings, CalendarDays, Camera } from "lucide-react";
 import { exercises, history } from "@/lib/workouts";
 import { BottomNav } from "@/components/BottomNav";
-import { ONBOARDING_COMPLETED_KEY } from "@/lib/auth";
+import { AUTH_TOKEN_KEY, ONBOARDING_COMPLETED_KEY } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,6 +31,11 @@ function Index() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    if (!localStorage.getItem(AUTH_TOKEN_KEY)) {
+      void navigate({ to: "/register", replace: true });
+      return;
+    }
+
     if (localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== "true") {
       void navigate({ to: "/onboarding", replace: true });
       return;
@@ -43,7 +48,7 @@ function Index() {
     return (
       <div className="grid min-h-dvh place-items-center">
         <div className="flex items-center gap-2 text-primary">
-          <ScanLine className="h-7 w-7 animate-pulse" />
+          <img src="icon.png" alt="icon" width={27}/>
           <span className="font-display text-2xl font-extrabold">Worky</span>
         </div>
       </div>
@@ -54,9 +59,7 @@ function Index() {
     <div className="pb-28">
       <header className="flex items-center justify-between px-5 pt-6">
         <div className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
-            <ScanLine className="h-5 w-5" />
-          </div>
+          <img src="icon.png" alt="icon" width={27}/>
           <span className="font-display text-2xl font-extrabold">Worky</span>
         </div>
         <Link to="/profil" aria-label="Pengaturan" className="text-muted-foreground">

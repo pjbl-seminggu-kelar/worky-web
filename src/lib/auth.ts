@@ -22,5 +22,4 @@ export type AuthResponse = {
 export function saveAuthSession(response: AuthResponse) {
   localStorage.setItem(AUTH_TOKEN_KEY, response.data.token);
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.data.user));
-  localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
 }
