@@ -9,6 +9,33 @@ export type AuthUser = {
   experienceLevel?: string;
   age?: number;
   weightKg?: number;
+  goal?: string;
+  sessionsPerWeek?: number;
+  sessionDurationMinutes?: number;
+  equipment?: string[];
+  reminderTime?: string;
+  streakWeeks?: number;
+  createdAt?: string;
+};
+
+export type WeeklyFormQuality = {
+  weekLabel: string;
+  formRate: number;
+};
+
+export type UserStats = {
+  totalSessions: number;
+  totalValidReps: number;
+  avgFormRate: number;
+  weeklyFormQuality: WeeklyFormQuality[];
+};
+
+export type ProfileResponse = {
+  status: "success";
+  data: {
+    user: AuthUser;
+    stats: UserStats;
+  };
 };
 
 export type AuthResponse = {
