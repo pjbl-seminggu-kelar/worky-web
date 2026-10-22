@@ -81,6 +81,14 @@ export function formatItemTarget(item: WorkoutPlanItem) {
   return `${item.exercise.name} ${item.sets}×${item.targetReps ?? 0}`;
 }
 
+/** Short sets×reps target only, e.g. "3×10" or "3×45 dtk" */
+export function formatSetsShort(item: WorkoutPlanItem) {
+  if (item.targetDurationSeconds) {
+    return `${item.sets}×${item.targetDurationSeconds} dtk`;
+  }
+  return `${item.sets}×${item.targetReps ?? 0}`;
+}
+
 /** Group plan items by dayOfWeek and build display data for /plan page */
 export function buildPlanDays(plan: WorkoutPlan) {
   const byDay = new Map<number, WorkoutPlanItem[]>();
