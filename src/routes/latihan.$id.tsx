@@ -1,13 +1,99 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ChevronLeft, Camera, Target, Minus, Plus } from "lucide-react";
-import { exercises, details } from "@/lib/workouts";
+import { exercises, details, getExerciseImage } from "@/lib/workouts";
+import { apiFetch } from "@/lib/api";
+
+export type ExerciseDetailData = {
+  id: string;
+  slug: string;
+  name: string;
+  imageUrl?: string;
+  category: string;
+  description: string;
+  instructions: string[];
+  equipmentRequired: string[];
+  cameraGuidance: {
+    distance: string;
+    position: string;
+  };
+  supportedErrors: string[];
+  defaultSets: number;
+  defaultTargetReps: number | null;
+  defaultTargetDurationSeconds: number | null;
+  defaultRestSeconds: number;
+  cvStatus: string;
+  modelVersion?: string;
+  isActive?: boolean;
+};
+
+export type ExerciseDetailResponse = {
+  status: "success";
+  data: ExerciseDetailData;
+};
 
 export const Route = createFileRoute("/latihan/$id")({
-  loader: ({ params }) => {
-    const ex = exercises.find((e) => e.id === params.id);
-    const d = details[params.id];
-    if (!ex || !d) throw notFound();
-    return { ex, d };
+  loader: async ({ params }) => {
+    const rawId = params.id.toLowerCase();
+    const slug = rawId.replace(/-/g, "_");
+
+    try {
+      const response = await apiFetch<ExerciseDetailResponse>(`/exercises/${slug}`);
+      const data = response.data;
+      if (!data) throw notFound();
+
+      const staticEx = exercises.find(
+        (e) =>
+          e.slug === slug ||
+          e.id === rawId ||
+          e.slug === rawId.replace(/_/g, "-"),
+      );
+
+      const isDuration =
+        data.defaultTargetDurationSeconds !== null &&
+        data.defaultTargetDurationSeconds !== undefined;
+
+      return {
+        ex: {
+          name: data.name,
+          img: data.imageUrl || getExerciseImage(data.slug),
+          score: staticEx?.score ?? 86,
+        },
+        d: {
+          muscles: data.description,
+          camera: data.cameraGuidance
+            ? `${data.cameraGuidance.position}, ${data.cameraGuidance.distance}`
+            : "Samping, 2–3 m",
+          steps: data.instructions || [],
+          checks: data.supportedErrors || [],
+        },
+        session: [
+          ["Set", String(data.defaultSets ?? 3)],
+          isDuration
+            ? ["Durasi", `${data.defaultTargetDurationSeconds} dtk`]
+            : ["Repetisi", String(data.defaultTargetReps ?? 12)],
+          ["Istirahat", `${data.defaultRestSeconds ?? 45} dtk`],
+        ] as [string, string][],
+      };
+    } catch {
+      // Fallback to static mock if offline or API error
+      const dashId = rawId.replace(/_/g, "-");
+      const ex = exercises.find((e) => e.id === rawId || e.id === dashId || e.slug === slug);
+      const d = details[rawId] || details[dashId] || details[slug];
+      if (!ex || !d) throw notFound();
+
+      return {
+        ex: {
+          ...ex,
+          img: ex.img || getExerciseImage(ex.slug),
+        },
+        d,
+        session: [
+          ["Set", "3"],
+          ["Repetisi", "12"],
+          ["Istirahat", "45 dtk"],
+        ] as [string, string][],
+      };
+    }
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -21,7 +107,7 @@ export const Route = createFileRoute("/latihan/$id")({
 });
 
 function Detail() {
-  const { ex, d } = Route.useLoaderData();
+  const { ex, d, session } = Route.useLoaderData();
   return (
     <div className="pb-28">
       <div className="relative bg-cream px-5 pb-6 pt-5">
@@ -66,7 +152,7 @@ function Detail() {
 
         <h2 className="mt-6 text-lg font-bold">Atur sesi</h2>
         <div className="mt-2 space-y-2">
-          {[["Set", "3"], ["Repetisi", "12"], ["Istirahat", "45 dtk"]].map(([k, v]) => (
+          {session.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between rounded-2xl bg-card px-4 py-3">
               <span className="text-sm">{k}</span>
               <div className="flex items-center gap-3">

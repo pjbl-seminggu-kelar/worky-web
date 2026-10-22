@@ -18,6 +18,7 @@ async function proxyToWorkyApi({ request, params }: ProxyContext) {
   headers.delete("origin");
   headers.delete("referer");
   headers.delete("content-length");
+  headers.delete("accept-encoding");
 
   const requestInit: RequestInit = {
     method: request.method,
@@ -30,7 +31,17 @@ async function proxyToWorkyApi({ request, params }: ProxyContext) {
   }
 
   try {
-    return await fetch(upstreamUrl, requestInit);
+    const upstreamResponse = await fetch(upstreamUrl, requestInit);
+
+    const responseHeaders = new Headers(upstreamResponse.headers);
+    responseHeaders.delete("content-encoding");
+    responseHeaders.delete("content-length");
+
+    return new Response(upstreamResponse.body, {
+      status: upstreamResponse.status,
+      statusText: upstreamResponse.statusText,
+      headers: responseHeaders,
+    });
   } catch (error) {
     console.error("Worky API proxy error", error);
     return Response.json(

@@ -1,7 +1,60 @@
-import pushup from "/pushup.png";
-import squat from "/squat.png";
-import situp from "/situp.png";
-import plank from "/plank.png";
+const pushup = "/pushup.png";
+const squat = "/squat.png";
+const situp = "/situp.png";
+const plank = "/plank.png";
+const pullup = "/pullup.png";
+const dips = "/dips.png";
+
+/* ── API types for /exercises ── */
+
+export type ExerciseItem = {
+  id: string;
+  slug: string;
+  name: string;
+  category: "UPPER" | "LOWER" | "CORE" | "FULL_BODY" | string;
+  description: string;
+  defaultSets: number;
+  defaultTargetReps: number | null;
+  defaultTargetDurationSeconds: number | null;
+  cvStatus: "VALIDATED" | "EXPERIMENTAL" | "PLANNED" | string;
+  imageUrl?: string;
+};
+
+export type ExercisesResponse = {
+  status: "success";
+  data: ExerciseItem[];
+};
+
+export const exerciseImages: Record<string, string> = {
+  push_up: pushup,
+  "push-up": pushup,
+  squat: squat,
+  sit_up: situp,
+  "sit-up": situp,
+  plank: plank,
+  pull_up: pullup,
+  "pull-up": pullup,
+  chair_dips: dips,
+  "chair-dips": dips,
+  dips: dips,
+};
+
+export function getExerciseImage(slug: string, imageUrl?: string): string {
+  if (imageUrl) return imageUrl;
+  const normalized = slug.toLowerCase().replace(/-/g, "_");
+  return exerciseImages[normalized] ?? exerciseImages[slug] ?? pushup;
+}
+
+export function formatExerciseTarget(
+  sets: number,
+  reps: number | null,
+  durationSeconds: number | null,
+): string {
+  if (durationSeconds) {
+    return `${sets} × ${durationSeconds} dtk`;
+  }
+  return `${sets} × ${reps ?? 12} rep`;
+}
 
 /* ── API types for /plans/generate ── */
 
@@ -123,13 +176,15 @@ export function buildPlanDays(plan: WorkoutPlan) {
   });
 }
 
-/* ── Static/mock data (kept for existing pages) ── */
+/* ── Static/mock data ── */
 
 export const exercises = [
-  { id: "push-up", name: "Push-up", img: pushup, target: "3 × 12 rep", score: 86 },
-  { id: "squat", name: "Squat", img: squat, target: "3 × 15 rep", score: 92 },
-  { id: "sit-up", name: "Sit-up", img: situp, target: "3 × 20 rep", score: 74 },
-  { id: "plank", name: "Plank", img: plank, target: "3 × 45 dtk", score: 81 },
+  { id: "push-up", slug: "push_up", name: "Push-up", img: pushup, target: "3 × 12 rep", score: 86, category: "UPPER" },
+  { id: "squat", slug: "squat", name: "Squat", img: squat, target: "3 × 15 rep", score: 92, category: "LOWER" },
+  { id: "sit-up", slug: "sit_up", name: "Sit-up", img: situp, target: "3 × 20 rep", score: 74, category: "CORE" },
+  { id: "plank", slug: "plank", name: "Plank", img: plank, target: "3 × 45 dtk", score: 81, category: "CORE" },
+  { id: "pull-up", slug: "pull_up", name: "Pull-up", img: pullup, target: "3 × 8 rep", score: 80, category: "UPPER" },
+  { id: "chair-dips", slug: "chair_dips", name: "Chair Dips", img: dips, target: "3 × 12 rep", score: 78, category: "UPPER" },
 ];
 
 export const history = [
@@ -140,6 +195,12 @@ export const history = [
 
 export const details: Record<string, { muscles: string; camera: string; steps: string[]; checks: string[] }> = {
   "push-up": {
+    muscles: "Dada · Trisep · Bahu",
+    camera: "Samping, 2–3 m",
+    steps: ["Tangan selebar bahu, badan lurus.", "Turunkan dada hingga siku ±90°.", "Dorong kembali ke posisi awal."],
+    checks: ["Pinggul turun", "Pinggul terlalu tinggi", "Turun kurang dalam", "Kepala menunduk"],
+  },
+  push_up: {
     muscles: "Dada · Trisep · Bahu",
     camera: "Samping, 2–3 m",
     steps: ["Tangan selebar bahu, badan lurus.", "Turunkan dada hingga siku ±90°.", "Dorong kembali ke posisi awal."],
@@ -157,11 +218,57 @@ export const details: Record<string, { muscles: string; camera: string; steps: s
     steps: ["Berbaring, lutut ditekuk.", "Angkat badan ke arah lutut.", "Turun perlahan terkontrol."],
     checks: ["Menarik leher", "Gerakan terlalu cepat", "Rentang kurang penuh"],
   },
+  sit_up: {
+    muscles: "Perut · Hip flexor",
+    camera: "Samping, 2 m",
+    steps: ["Berbaring, lutut ditekuk.", "Angkat badan ke arah lutut.", "Turun perlahan terkontrol."],
+    checks: ["Menarik leher", "Gerakan terlalu cepat", "Rentang kurang penuh"],
+  },
   plank: {
     muscles: "Core · Bahu",
     camera: "Samping, 2–3 m",
     steps: ["Siku tepat di bawah bahu.", "Badan lurus dari kepala ke tumit.", "Tahan dan bernapas normal."],
     checks: ["Pinggul turun", "Pinggul terlalu tinggi", "Kepala menunduk"],
+  },
+  "pull-up": {
+    muscles: "Punggung · Bisep · Bahu",
+    camera: "Belakang / Samping, 2–3 m",
+    steps: [
+      "Genggam bar selebar bahu, telapak tangan menghadap depan.",
+      "Tarik tubuh ke atas hingga dagu melewati bar.",
+      "Turun perlahan kembali ke posisi awal.",
+    ],
+    checks: ["Kaki mengayun", "Rentang gerak kurang penuh", "Bahu tidak aktif"],
+  },
+  pull_up: {
+    muscles: "Punggung · Bisep · Bahu",
+    camera: "Belakang / Samping, 2–3 m",
+    steps: [
+      "Genggam bar selebar bahu, telapak tangan menghadap depan.",
+      "Tarik tubuh ke atas hingga dagu melewati bar.",
+      "Turun perlahan kembali ke posisi awal.",
+    ],
+    checks: ["Kaki mengayun", "Rentang gerak kurang penuh", "Bahu tidak aktif"],
+  },
+  "chair-dips": {
+    muscles: "Trisep · Bahu Depan · Dada",
+    camera: "Samping, 2 m",
+    steps: [
+      "Duduk di tepi kursi yang stabil, letakkan tangan di samping panggul.",
+      "Geser panggul ke depan dan tekuk siku hingga ±90°.",
+      "Dorong tubuh kembali ke atas menggunakan kekuatan trisep.",
+    ],
+    checks: ["Turun kurang dalam", "Siku mekar ke samping", "Bahu terlalu naik"],
+  },
+  chair_dips: {
+    muscles: "Trisep · Bahu Depan · Dada",
+    camera: "Samping, 2 m",
+    steps: [
+      "Duduk di tepi kursi yang stabil, letakkan tangan di samping panggul.",
+      "Geser panggul ke depan dan tekuk siku hingga ±90°.",
+      "Dorong tubuh kembali ke atas menggunakan kekuatan trisep.",
+    ],
+    checks: ["Turun kurang dalam", "Siku mekar ke samping", "Bahu terlalu naik"],
   },
 };
 

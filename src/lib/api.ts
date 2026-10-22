@@ -1,9 +1,11 @@
 export const API_BASE_URL =
   import.meta.env["VITE_API_BASE_URL"]?.replace(/\/$/, "") ?? "/api/worky";
 
+const WORKY_UPSTREAM_URL = "https://api-worky.vercel.app/api/v1";
+
 export type ApiRequestOptions<TBody = unknown> = Omit<RequestInit, "body"> & {
   body?: TBody;
-  token?: string;
+  token?: string | null | undefined;
 };
 
 export class ApiError extends Error {
@@ -29,7 +31,33 @@ function getErrorMessage(data: unknown, fallback: string) {
 }
 
 /**
- * Reusable Worky API client.
+ * Resolves the URL for an API endpoint.
+ * In browser, routes directly through /api/worky to eliminate CORS and localhost:5000 connection errors.
+ */
+export function resolveApiUrl(endpoint: string): string {
+  const clean = endpoint.replace(/^\//, "");
+  const envUrl = import.meta.env["VITE_API_BASE_URL"]?.replace(/\/$/, "");
+
+  if (typeof window === "undefined") {
+    return `${WORKY_UPSTREAM_URL}/${clean}`;
+  }
+
+  // If envUrl is empty, points to api-worky, or points to localhost:5000,
+  // use the reliable same-origin proxy /api/worky directly
+  if (
+    !envUrl ||
+    envUrl.includes("api-worky.vercel.app") ||
+    envUrl.includes("localhost:5000") ||
+    envUrl.includes("127.0.0.1:5000")
+  ) {
+    return `/api/worky/${clean}`;
+  }
+
+  return `${envUrl}/${clean}`;
+}
+
+/**
+ * Reusable Worky API client with automatic fallback.
  *
  * @example
  * apiFetch<UserResponse>("/users/me", { token })
@@ -57,7 +85,27 @@ export async function apiFetch<TResponse, TBody = unknown>(
       isFormData || typeof body === "string" ? (body as BodyInit) : JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE_URL}/${endpoint.replace(/^\//, "")}`, requestInit);
+  const cleanEndpoint = endpoint.replace(/^\//, "");
+  const primaryUrl = resolveApiUrl(cleanEndpoint);
+
+  let response: Response;
+  try {
+    response = await fetch(primaryUrl, requestInit);
+  } catch (networkError) {
+    // If primaryUrl fails, fallback to /api/worky
+    if (typeof window !== "undefined" && !primaryUrl.startsWith("/api/worky")) {
+      console.warn(
+        `[apiFetch] Gagal terhubung ke ${primaryUrl}. Menggunakan /api/worky/${cleanEndpoint}...`,
+      );
+      try {
+        response = await fetch(`/api/worky/${cleanEndpoint}`, requestInit);
+      } catch {
+        throw networkError;
+      }
+    } else {
+      throw networkError;
+    }
+  }
 
   const contentType = response.headers.get("content-type") ?? "";
   const data: unknown =
