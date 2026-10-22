@@ -27,31 +27,84 @@ const TOTAL_STEPS = 6;
 /** Steps 1–5 (index 1–5) that use option buttons */
 type OptionStep = {
   q: string;
-  opts: string[];
+  subtitle: string;
+  opts: { label: string; hint?: string }[];
   multiple?: boolean;
 };
 
 const optionSteps: Record<number, OptionStep> = {
   1: {
     q: "Apa tujuan latihanmu?",
-    opts: ["Menurunkan berat badan", "Membentuk tubuh", "Menambah kekuatan", "Tetap bugar"],
+    subtitle: "Jawabanmu membantu kami menyusun jenis latihan yang paling sesuai dengan tujuanmu.",
+    opts: [
+      {
+        label: "Menurunkan berat badan",
+        hint: "Bagus untuk: yang ingin membakar lemak dan menurunkan berat badan.",
+      },
+      {
+        label: "Membangun otot & membentuk tubuh",
+        hint: "Bagus untuk: yang ingin massa otot bertambah dan badan lebih berbentuk.",
+      },
+      {
+        label: "Meningkatkan kekuatan",
+        hint: "Bagus untuk: yang ingin angkat lebih berat dan jadi lebih kuat.",
+      },
+      {
+        label: "Menjaga kebugaran",
+        hint: "Bagus untuk: yang ingin tetap aktif dan sehat dengan latihan rutin.",
+      },
+    ],
   },
   2: {
     q: "Seberapa berpengalaman kamu?",
-    opts: ["Pemula", "Menengah", "Lanjutan"],
+    subtitle: "Ini menentukan tingkat kesulitan dan intensitas latihan di plan kamu.",
+    opts: [
+      {
+        label: "Pemula (Beginner)",
+        hint: "Baru mulai atau belum rutin berolahraga. Masih mempelajari teknik gerakan dasar.",
+      },
+      {
+        label: "Menengah (Intermediate)",
+        hint: "Sudah rutin berlatih dan cukup familiar dengan teknik gerakan dasar.",
+      },
+      {
+        label: "Lanjutan (Advanced)",
+        hint: "Sudah berlatih secara konsisten, menguasai gerakan dasar, dan mampu mengatur intensitas latihan.",
+      },
+    ],
   },
   3: {
     q: "Peralatan yang kamu punya?",
-    opts: ["Tanpa alat", "Matras", "Pull-up bar", "Kursi / bangku"],
+    subtitle:
+      "Kami hanya akan merekomendasikan latihan yang bisa kamu lakukan dengan alat yang kamu punya.",
+    opts: [
+      { label: "Tanpa alat" },
+      { label: "Matras" },
+      { label: "Pull-up bar" },
+      { label: "Kursi / bangku" },
+    ],
     multiple: true,
   },
   4: {
     q: "Berapa kali seminggu?",
-    opts: ["2 sesi", "3 sesi", "4 sesi", "5+ sesi"],
+    subtitle: "Menentukan seberapa sering latihan muncul dalam jadwal mingguanmu.",
+    opts: [
+      { label: "2 sesi" },
+      { label: "3 sesi" },
+      { label: "4 sesi" },
+      { label: "5+ sesi" },
+    ],
   },
   5: {
     q: "Berapa menit per sesi?",
-    opts: ["15 menit", "20 menit", "30 menit", "45 menit", "60 menit"],
+    subtitle: "Kami menyesuaikan jumlah gerakan agar pas dengan waktu yang kamu punya.",
+    opts: [
+      { label: "15 menit" },
+      { label: "20 menit" },
+      { label: "30 menit" },
+      { label: "45 menit" },
+      { label: "60 menit" },
+    ],
   },
 };
 
@@ -59,15 +112,15 @@ const optionSteps: Record<number, OptionStep> = {
 
 const GOAL_MAP: Record<string, string> = {
   "Menurunkan berat badan": "WEIGHT_LOSS",
-  "Membentuk tubuh": "MUSCLE_BUILDING",
-  "Menambah kekuatan": "STRENGTH",
-  "Tetap bugar": "GENERAL_FITNESS",
+  "Membangun otot & membentuk tubuh": "MUSCLE_BUILDING",
+  "Meningkatkan kekuatan": "STRENGTH",
+  "Menjaga kebugaran": "GENERAL_FITNESS",
 };
 
 const LEVEL_MAP: Record<string, string> = {
-  Pemula: "BEGINNER",
-  Menengah: "INTERMEDIATE",
-  Lanjutan: "ADVANCED",
+  "Pemula (Beginner)": "BEGINNER",
+  "Menengah (Intermediate)": "INTERMEDIATE",
+  "Lanjutan (Advanced)": "ADVANCED",
 };
 
 const FREQUENCY_MAP: Record<string, number> = {
@@ -302,20 +355,28 @@ function Onboarding() {
       {step > 0 && optionSteps[step] && (
         <>
           <h1 className="mt-2 text-3xl font-extrabold">{optionSteps[step]!.q}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{optionSteps[step]!.subtitle}</p>
           <div className="mt-6 space-y-2.5">
             {optionSteps[step]!.opts.map((o) => {
-              const active = picked[step]?.includes(o) ?? false;
+              const active = picked[step]?.includes(o.label) ?? false;
               return (
                 <button
-                  key={o}
+                  key={o.label}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => selectOption(o)}
-                  className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left text-sm font-semibold transition-colors ${active ? "border-primary bg-primary/15 text-foreground" : "border-border bg-card text-muted-foreground"}`}
+                  onClick={() => selectOption(o.label)}
+                  className={`flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-left text-sm font-semibold transition-colors ${active ? "border-primary bg-primary/15 text-foreground" : "border-border bg-card text-muted-foreground"}`}
                 >
-                  <span>{o}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block">{o.label}</span>
+                    {o.hint && (
+                      <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                        {o.hint}
+                      </span>
+                    )}
+                  </span>
                   {active ? (
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
                       <Check className="h-4 w-4" strokeWidth={3} />
                     </span>
                   ) : null}
