@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { Home, Dumbbell, CalendarDays, User } from "lucide-react";
 
 const items = [
-  { to: "/", icon: Home, label: "Beranda" },
-  { to: "/latihan", icon: Dumbbell, label: "Latihan" },
+  { to: "/home", icon: Home, label: "Beranda" },
+  { to: "/exercies", icon: Dumbbell, label: "Latihan" },
   { to: "/plan", icon: CalendarDays, label: "Plan" },
   { to: "/profil", icon: User, label: "Profil" },
 ] as const;
@@ -16,7 +16,7 @@ export function BottomNav() {
           <li key={to}>
             <Link
               to={to}
-              activeOptions={{ exact: to === "/" }}
+              activeOptions={{ exact: true }}
               className="flex flex-col items-center gap-1 text-muted-foreground"
               activeProps={{ className: "text-primary" }}
             >

@@ -15,11 +15,14 @@ describe("App routing", () => {
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
 
-  it.each(["/onboarding", "/register", "/login"])("matches the %s page", (path) => {
-    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+  it.each(["/home", "/exercies", "/exercies/squat", "/onboarding", "/register", "/login"])(
+    "matches the %s page",
+    (path) => {
+      const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
 
-    const matches = router.matchRoutes(path);
+      const matches = router.matchRoutes(path);
 
-    expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
-  });
+      expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
+    },
+  );
 });

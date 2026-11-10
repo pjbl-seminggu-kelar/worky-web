@@ -16,7 +16,7 @@ import appCss from "../styles.css?url";
 import { AUTH_TOKEN_KEY, ONBOARDING_COMPLETED_KEY } from "../lib/auth";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
-const PUBLIC_PATHS = ["/onboarding", "/login", "/register"];
+const PUBLIC_PATHS = ["/", "/login", "/register"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api/");
@@ -29,12 +29,10 @@ const AUTH_REDIRECT_SCRIPT = `
     var hasToken = Boolean(localStorage.getItem("${AUTH_TOKEN_KEY}"));
     var isPublic = ${JSON.stringify(PUBLIC_PATHS)}.includes(path) || path.indexOf("/api/") === 0;
 
-    if (path === "/" && !hasToken) {
-      window.location.replace("/register");
-    } else if (path === "/" && !onboardingDone) {
-      window.location.replace("/onboarding");
-    } else if (!isPublic && !hasToken) {
+    if (!isPublic && !hasToken) {
       window.location.replace("/login");
+    } else if (!isPublic && path !== "/onboarding" && !onboardingDone) {
+      window.location.replace("/onboarding");
     }
   } catch (_) {}
 `;
@@ -130,7 +128,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="id">
       <head>
         <HeadContent />
       </head>
@@ -148,6 +146,7 @@ function RootComponent() {
   const location = useLocation();
   const navigate = useNavigate();
   const publicRoute = isPublicPath(location.pathname);
+  const landingRoute = location.pathname === "/";
   const [allowedPath, setAllowedPath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -155,6 +154,14 @@ function RootComponent() {
 
     if (!localStorage.getItem(AUTH_TOKEN_KEY)) {
       void navigate({ to: "/login", replace: true });
+      return;
+    }
+
+    if (
+      location.pathname !== "/onboarding" &&
+      localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== "true"
+    ) {
+      void navigate({ to: "/onboarding", replace: true });
       return;
     }
 
@@ -166,7 +173,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-stage">
-        <div className="relative mx-auto min-h-screen w-full max-w-[430px] bg-background shadow-2xl">
+        <div
+          className={`relative mx-auto min-h-screen w-full bg-background ${landingRoute ? "" : "max-w-[430px] shadow-2xl"}`}
+        >
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           {canRenderRoute ? (
             <Outlet />

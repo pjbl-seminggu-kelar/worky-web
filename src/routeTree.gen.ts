@@ -11,14 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HasilRouteImport } from './routes/hasil'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as ProfilRouteImport } from './routes/profil'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SesiRouteImport } from './routes/sesi'
-import { Route as LatihanIndexRouteImport } from './routes/latihan.index'
-import { Route as LatihanIdRouteImport } from './routes/latihan.$id'
+import { Route as ExerciesIndexRouteImport } from './routes/exercies.index'
+import { Route as ExerciesIdRouteImport } from './routes/exercies.$id'
 import { Route as ApiWorkySplatRouteImport } from './routes/api.worky.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const HasilRoute = HasilRouteImport.update({
   id: '/hasil',
   path: '/hasil',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -61,14 +67,14 @@ const SesiRoute = SesiRouteImport.update({
   path: '/sesi',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LatihanIndexRoute = LatihanIndexRouteImport.update({
-  id: '/latihan/',
-  path: '/latihan/',
+const ExerciesIndexRoute = ExerciesIndexRouteImport.update({
+  id: '/exercies/',
+  path: '/exercies/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LatihanIdRoute = LatihanIdRouteImport.update({
-  id: '/latihan/$id',
-  path: '/latihan/$id',
+const ExerciesIdRoute = ExerciesIdRouteImport.update({
+  id: '/exercies/$id',
+  path: '/exercies/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkySplatRoute = ApiWorkySplatRouteImport.update({
@@ -80,41 +86,44 @@ const ApiWorkySplatRoute = ApiWorkySplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/hasil': typeof HasilRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/plan': typeof PlanRoute
   '/profil': typeof ProfilRoute
   '/register': typeof RegisterRoute
   '/sesi': typeof SesiRoute
-  '/latihan/$id': typeof LatihanIdRoute
-  '/latihan/': typeof LatihanIndexRoute
+  '/exercies/$id': typeof ExerciesIdRoute
+  '/exercies/': typeof ExerciesIndexRoute
   '/api/worky/$': typeof ApiWorkySplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/hasil': typeof HasilRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/plan': typeof PlanRoute
   '/profil': typeof ProfilRoute
   '/register': typeof RegisterRoute
   '/sesi': typeof SesiRoute
-  '/latihan/$id': typeof LatihanIdRoute
-  '/latihan': typeof LatihanIndexRoute
+  '/exercies/$id': typeof ExerciesIdRoute
+  '/exercies': typeof ExerciesIndexRoute
   '/api/worky/$': typeof ApiWorkySplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/hasil': typeof HasilRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/plan': typeof PlanRoute
   '/profil': typeof ProfilRoute
   '/register': typeof RegisterRoute
   '/sesi': typeof SesiRoute
-  '/latihan/$id': typeof LatihanIdRoute
-  '/latihan/': typeof LatihanIndexRoute
+  '/exercies/$id': typeof ExerciesIdRoute
+  '/exercies/': typeof ExerciesIndexRoute
   '/api/worky/$': typeof ApiWorkySplatRoute
 }
 export interface FileRouteTypes {
@@ -122,54 +131,58 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/hasil'
+    | '/home'
     | '/login'
     | '/onboarding'
     | '/plan'
     | '/profil'
     | '/register'
     | '/sesi'
-    | '/latihan/$id'
-    | '/latihan/'
+    | '/exercies/$id'
+    | '/exercies/'
     | '/api/worky/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/hasil'
+    | '/home'
     | '/login'
     | '/onboarding'
     | '/plan'
     | '/profil'
     | '/register'
     | '/sesi'
-    | '/latihan/$id'
-    | '/latihan'
+    | '/exercies/$id'
+    | '/exercies'
     | '/api/worky/$'
   id:
     | '__root__'
     | '/'
     | '/hasil'
+    | '/home'
     | '/login'
     | '/onboarding'
     | '/plan'
     | '/profil'
     | '/register'
     | '/sesi'
-    | '/latihan/$id'
-    | '/latihan/'
+    | '/exercies/$id'
+    | '/exercies/'
     | '/api/worky/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HasilRoute: typeof HasilRoute
+  HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   PlanRoute: typeof PlanRoute
   ProfilRoute: typeof ProfilRoute
   RegisterRoute: typeof RegisterRoute
   SesiRoute: typeof SesiRoute
-  LatihanIdRoute: typeof LatihanIdRoute
-  LatihanIndexRoute: typeof LatihanIndexRoute
+  ExerciesIdRoute: typeof ExerciesIdRoute
+  ExerciesIndexRoute: typeof ExerciesIndexRoute
   ApiWorkySplatRoute: typeof ApiWorkySplatRoute
 }
 
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/hasil'
       fullPath: '/hasil'
       preLoaderRoute: typeof HasilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -231,18 +251,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SesiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/latihan/': {
-      id: '/latihan/'
-      path: '/latihan'
-      fullPath: '/latihan/'
-      preLoaderRoute: typeof LatihanIndexRouteImport
+    '/exercies/': {
+      id: '/exercies/'
+      path: '/exercies'
+      fullPath: '/exercies/'
+      preLoaderRoute: typeof ExerciesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/latihan/$id': {
-      id: '/latihan/$id'
-      path: '/latihan/$id'
-      fullPath: '/latihan/$id'
-      preLoaderRoute: typeof LatihanIdRouteImport
+    '/exercies/$id': {
+      id: '/exercies/$id'
+      path: '/exercies/$id'
+      fullPath: '/exercies/$id'
+      preLoaderRoute: typeof ExerciesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/worky/$': {
@@ -258,14 +278,15 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HasilRoute: HasilRoute,
+  HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   PlanRoute: PlanRoute,
   ProfilRoute: ProfilRoute,
   RegisterRoute: RegisterRoute,
   SesiRoute: SesiRoute,
-  LatihanIdRoute: LatihanIdRoute,
-  LatihanIndexRoute: LatihanIndexRoute,
+  ExerciesIdRoute: ExerciesIdRoute,
+  ExerciesIndexRoute: ExerciesIndexRoute,
   ApiWorkySplatRoute: ApiWorkySplatRoute,
 }
 export const routeTree = rootRouteImport

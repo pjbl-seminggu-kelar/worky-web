@@ -31,7 +31,7 @@ export type ExerciseDetailResponse = {
   data: ExerciseDetailData;
 };
 
-export const Route = createFileRoute("/latihan/$id")({
+export const Route = createFileRoute("/exercies/$id")({
   loader: async ({ params }) => {
     const rawId = params.id.toLowerCase();
     const slug = rawId.replace(/-/g, "_");
@@ -111,7 +111,7 @@ function Detail() {
   return (
     <div className="pb-28">
       <div className="relative bg-cream px-5 pb-6 pt-5">
-        <Link to="/latihan" aria-label="Kembali" className="grid h-10 w-10 place-items-center rounded-full bg-background text-foreground">
+        <Link to="/exercies" aria-label="Kembali" className="grid h-10 w-10 place-items-center rounded-full bg-background text-foreground">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <img src={ex.img} alt={ex.name} width={816} height={816} className="mx-auto h-56 w-56 object-contain" />

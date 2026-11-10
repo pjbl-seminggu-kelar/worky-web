@@ -253,7 +253,7 @@ function Onboarding() {
       localStorage.setItem("worky:active-plan", JSON.stringify(planResponse.data));
       localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
 
-      await navigate({ to: "/plan", replace: true });
+      await navigate({ to: "/home", replace: true });
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError
@@ -284,7 +284,7 @@ function Onboarding() {
           </div>
         ) : (
           <Link
-            to="/"
+            to="/home"
             aria-label="Kembali"
             className="grid h-10 w-10 place-items-center rounded-full bg-card"
           >

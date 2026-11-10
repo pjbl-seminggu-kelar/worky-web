@@ -27,7 +27,7 @@ function Report() {
     <div className="pb-10">
       <div className="flex items-center justify-between px-5 pt-5">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sesi selesai</span>
-        <Link to="/" aria-label="Tutup" className="grid h-10 w-10 place-items-center rounded-full bg-card"><X className="h-5 w-5" /></Link>
+        <Link to="/home" aria-label="Tutup" className="grid h-10 w-10 place-items-center rounded-full bg-card"><X className="h-5 w-5" /></Link>
       </div>
       <div className="px-5">
         <h1 className="mt-2 text-3xl font-extrabold">Kerja bagus! 💪</h1>
@@ -71,7 +71,7 @@ function Report() {
 
       <div className="mt-8 grid grid-cols-2 gap-3 px-5">
         <Link to="/sesi" className="rounded-full border border-border py-3.5 text-center text-sm font-semibold">Ulangi</Link>
-        <Link to="/" className="rounded-full bg-secondary py-3.5 text-center text-sm font-semibold text-secondary-foreground">Selesai</Link>
+        <Link to="/home" className="rounded-full bg-secondary py-3.5 text-center text-sm font-semibold text-secondary-foreground">Selesai</Link>
       </div>
     </div>
   );

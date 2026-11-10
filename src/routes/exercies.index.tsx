@@ -15,7 +15,7 @@ import {
   type ExercisesResponse,
 } from "@/lib/exercises";
 
-export const Route = createFileRoute("/latihan/")({
+export const Route = createFileRoute("/exercies/")({
   head: () => ({
     meta: [
       { title: "Katalog Gerakan | Worky" },
@@ -215,7 +215,7 @@ function Library() {
             return (
               <Link
                 key={e.id}
-                to="/latihan/$id"
+                to="/exercies/$id"
                 params={{ id: routeId }}
                 className="group relative flex flex-col justify-between rounded-2xl bg-cream p-3 transition-transform active:scale-[0.98]"
               >

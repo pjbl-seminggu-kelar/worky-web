@@ -25,7 +25,7 @@ function Session() {
         <div className="h-1 w-1/3 rounded-full bg-primary" />
       </div>
       <div className="mt-3 flex items-center justify-between text-xs font-semibold text-muted-foreground">
-        <Link to="/" className="flex items-center gap-1"><ChevronLeft className="h-4 w-4" /> 2 dari 6</Link>
+        <Link to="/home" className="flex items-center gap-1"><ChevronLeft className="h-4 w-4" /> 2 dari 6</Link>
         <span>04:12</span>
       </div>
 

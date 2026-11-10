@@ -38,7 +38,7 @@ function Login() {
         body: form,
       });
       saveAuthSession(response);
-      const destination = localStorage.getItem(ONBOARDING_COMPLETED_KEY) === "true" ? "/" : "/onboarding";
+      const destination = localStorage.getItem(ONBOARDING_COMPLETED_KEY) === "true" ? "/home" : "/onboarding";
       await navigate({ to: destination, replace: true });
     } catch (caughtError) {
       setError(
