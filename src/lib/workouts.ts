@@ -97,6 +97,18 @@ export type GeneratePlanResponse = {
 };
 
 export const ACTIVE_PLAN_KEY = "worky:active-plan";
+export const ACTIVE_WORKOUT_DAY_KEY = "worky:active-workout-day";
+export const WORKOUT_RESULT_KEY = "worky:workout-result";
+
+export type WorkoutResult = {
+  planName: string;
+  exerciseNames: string[];
+  totalExercises: number;
+  durationSeconds: number;
+  validReps: number;
+  invalidReps: number;
+  formRate: number;
+};
 
 /* ── Day helpers ── */
 
@@ -176,6 +188,36 @@ export function buildPlanDays(plan: WorkoutPlan) {
   });
 }
 
+export function getWorkoutDay(plan: WorkoutPlan, requestedDay?: number) {
+  const days = buildPlanDays(plan);
+
+  return (
+    days.find((day) => day.dayOfWeek === requestedDay && day.planItems.length > 0) ??
+    days.find((day) => day.isToday && day.planItems.length > 0) ??
+    days.find((day) => day.planItems.length > 0) ??
+    null
+  );
+}
+
+export function shouldRunSessionTimer(options: {
+  phase: "work" | "rest";
+  isReady: boolean;
+  hasItems: boolean;
+  remaining: number;
+  isStarting: boolean;
+  hasSessionId: boolean;
+  hasSessionError: boolean;
+}) {
+  const { phase, isReady, hasItems, remaining, isStarting, hasSessionId, hasSessionError } = options;
+
+  return (
+    isReady &&
+    hasItems &&
+    remaining > 0 &&
+    (phase === "rest" || (!isStarting && hasSessionId && !hasSessionError))
+  );
+}
+
 /* ── Static/mock data ── */
 
 export const exercises = [
@@ -185,12 +227,6 @@ export const exercises = [
   { id: "plank", slug: "plank", name: "Plank", img: plank, target: "3 × 45 dtk", score: 81, category: "CORE" },
   { id: "pull-up", slug: "pull_up", name: "Pull-up", img: pullup, target: "3 × 8 rep", score: 80, category: "UPPER" },
   { id: "chair-dips", slug: "chair_dips", name: "Chair Dips", img: dips, target: "3 × 12 rep", score: 78, category: "UPPER" },
-];
-
-export const history = [
-  { title: "Full Body Pemula", date: "Kemarin · 18 mnt", valid: 42, total: 48, img: squat },
-  { title: "Upper Body Rumahan", date: "Sen · 22 mnt", valid: 35, total: 44, img: pushup },
-  { title: "Core 10 Menit", date: "Sab · 10 mnt", valid: 50, total: 56, img: situp },
 ];
 
 export const details: Record<string, { muscles: string; camera: string; steps: string[]; checks: string[] }> = {

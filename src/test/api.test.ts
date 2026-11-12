@@ -51,4 +51,53 @@ describe("apiFetch", () => {
       }),
     );
   });
+
+  it.each([
+    [
+      "/sessions/session-1/complete",
+      {
+        activeDurationSeconds: 10,
+        totalAttempts: 10,
+        totalReps: 10,
+        validReps: 8,
+        invalidReps: 2,
+        unassessedAttempts: 0,
+        validHoldSeconds: 0,
+      },
+    ],
+    ["/plans/rest-day/checkin", {}],
+  ])("posts authenticated workout data to %s", async (endpoint, body) => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "success" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiFetch(endpoint, { method: "POST", token: "test-token", body });
+
+    const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`/api/worky${endpoint}`);
+    expect(request.method).toBe("POST");
+    expect(request.body).toBe(JSON.stringify(body));
+    expect(new Headers(request.headers).get("Authorization")).toBe("Bearer test-token");
+  });
+
+  it("gets the authenticated weekly streak", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "success", data: { days: [] } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiFetch("/plans/weekly-streak", { token: "test-token" });
+
+    const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/worky/plans/weekly-streak");
+    expect(request.method).toBeUndefined();
+    expect(new Headers(request.headers).get("Authorization")).toBe("Bearer test-token");
+  });
 });

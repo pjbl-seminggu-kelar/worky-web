@@ -2,8 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BicepsFlexed, Dumbbell, Footprints, Moon, Play, Target } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { apiFetch, ApiError } from "@/lib/api";
+import { AUTH_TOKEN_KEY } from "@/lib/auth";
 import {
   ACTIVE_PLAN_KEY,
+  ACTIVE_WORKOUT_DAY_KEY,
   buildPlanDays,
   formatSetsShort,
   goalLabel,
@@ -34,6 +37,9 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 function Plan() {
   const [activePlan, setActivePlan] = useState<WorkoutPlan | null>(null);
+  const [isClaimingRest, setIsClaimingRest] = useState(false);
+  const [restMessage, setRestMessage] = useState("");
+  const [restClaimed, setRestClaimed] = useState(false);
 
   useEffect(() => {
     try {
@@ -43,6 +49,30 @@ function Plan() {
       // ignore parse errors
     }
   }, []);
+
+  async function handleRestDayCheckin() {
+    setIsClaimingRest(true);
+    setRestMessage("");
+
+    try {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      await apiFetch("/plans/rest-day/checkin", {
+        method: "POST",
+        token,
+        body: {},
+      });
+      setRestClaimed(true);
+      setRestMessage("Rest day berhasil diklaim. Streak tetap menyala.");
+    } catch (error) {
+      setRestMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Rest day belum dapat diklaim. Periksa koneksi lalu coba lagi.",
+      );
+    } finally {
+      setIsClaimingRest(false);
+    }
+  }
 
   if (!activePlan) {
     return (
@@ -103,6 +133,9 @@ function Plan() {
             </ul>
             <Link
               to="/sesi"
+              onClick={() =>
+                localStorage.setItem(ACTIVE_WORKOUT_DAY_KEY, String(today.dayOfWeek))
+              }
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground"
             >
               <Play className="h-4 w-4 fill-current" /> Mulai sesi
@@ -119,6 +152,22 @@ function Plan() {
             <p className="mt-2 text-sm text-muted-foreground">
               Pemulihan · tidak ada latihan hari ini. Nikmati istirahatmu, besok kita lanjut.
             </p>
+            <button
+              type="button"
+              disabled={isClaimingRest || restClaimed}
+              onClick={() => void handleRestDayCheckin()}
+              className="mt-5 flex w-full items-center justify-center rounded-full bg-secondary py-3.5 text-sm font-semibold text-secondary-foreground disabled:opacity-60"
+            >
+              {isClaimingRest ? "Mengklaim rest day…" : restClaimed ? "Rest day diklaim" : "Klaim rest day"}
+            </button>
+            {restMessage && (
+              <p
+                role="status"
+                className={`mt-3 text-sm ${restClaimed ? "text-secondary" : "text-destructive"}`}
+              >
+                {restMessage}
+              </p>
+            )}
           </div>
         )}
       </section>

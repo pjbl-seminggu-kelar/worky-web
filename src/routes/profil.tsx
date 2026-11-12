@@ -1,13 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, Target, Dumbbell, Bell, Shield, Camera } from "lucide-react";
+import { ChevronRight, Target, Dumbbell, Camera, LogOut } from "lucide-react";
 import { BottomNav, PageHeader } from "@/components/BottomNav";
 import { apiFetch } from "@/lib/api";
 import {
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
+  buildLast7DaysFormQuality,
+  clearAuthSession,
   type AuthUser,
   type ProfileResponse,
+  type SessionFormHistory,
   type UserStats,
 } from "@/lib/auth";
 import { goalLabel } from "@/lib/workouts";
@@ -30,9 +33,45 @@ const LEVEL_LABEL: Record<string, string> = {
   ADVANCED: "Lanjutan",
 };
 
+type SessionHistoryResponse = {
+  status: "success";
+  data: SessionFormHistory[];
+};
+
+function ProfileSkeleton() {
+  return (
+    <div className="animate-pulse px-5 pt-6" role="status" aria-label="Memuat profil">
+      <span className="sr-only">Memuat profil...</span>
+      <div className="h-8 w-24 rounded-lg bg-muted" />
+      <div className="mt-6 flex items-center gap-4">
+        <div className="h-16 w-16 shrink-0 rounded-full bg-muted" />
+        <div className="flex-1 space-y-2">
+          <div className="h-5 w-2/3 rounded-md bg-muted" />
+          <div className="h-4 w-1/2 rounded-md bg-muted" />
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index} className="h-16 rounded-2xl bg-muted" />
+        ))}
+      </div>
+      <div className="mt-4 h-44 rounded-2xl bg-muted" />
+      <div className="mt-4 space-y-px overflow-hidden rounded-2xl">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index} className="h-12 bg-muted" />
+        ))}
+      </div>
+      <div className="mt-4 h-12 rounded-2xl bg-muted" />
+    </div>
+  );
+}
+
 function Profile() {
+  const navigate = useNavigate();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<SessionFormHistory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -46,17 +85,29 @@ function Profile() {
 
     async function fetchProfile() {
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
-      if (!token) return;
+      if (!token) {
+        if (isMounted) setIsLoading(false);
+        return;
+      }
 
       try {
-        const response = await apiFetch<ProfileResponse>("/users/me", { token });
+        const [response, historyResponse] = await Promise.all([
+          apiFetch<ProfileResponse>("/users/me", { token }),
+          apiFetch<SessionHistoryResponse>("/sessions/history", { token }).catch((error) => {
+            console.error("Gagal memuat kualitas form:", error);
+            return null;
+          }),
+        ]);
         if (!isMounted) return;
 
         setUser(response.data.user);
         setStats(response.data.stats);
+        setSessionHistory(historyResponse?.data ?? []);
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.data.user));
       } catch (error) {
         console.error("Gagal memuat profil:", error);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     }
 
@@ -67,6 +118,15 @@ function Profile() {
     };
   }, []);
 
+  if (isLoading) {
+    return (
+      <div className="pb-28">
+        <ProfileSkeleton />
+        <BottomNav />
+      </div>
+    );
+  }
+
   const displayName = user?.displayName || "Pengguna Worky";
   const initial = displayName.charAt(0).toUpperCase() || "B";
   const levelText = user?.experienceLevel
@@ -76,8 +136,12 @@ function Profile() {
   const weightText = user?.weightKg != null ? `${user.weightKg} kg` : "-";
   const goalText = user?.goal ? goalLabel(user.goal) : "-";
   const equipmentText = user?.equipment?.length ? user.equipment.join(", ") : "Tanpa alat";
-  const reminderText = user?.reminderTime || "-";
-  const weeklyFormQuality = stats?.weeklyFormQuality ?? [];
+  const dailyFormQuality = buildLast7DaysFormQuality(sessionHistory);
+
+  function handleLogout() {
+    clearAuthSession();
+    void navigate({ to: "/login", replace: true });
+  }
 
   return (
     <div className="pb-28">
@@ -108,15 +172,22 @@ function Profile() {
       </div>
 
       <div className="mx-5 mt-4 rounded-2xl border border-border bg-card p-4">
-        <p className="text-sm font-bold">Kualitas form 7 minggu</p>
+        <p className="text-sm font-bold">Kualitas form 7 hari terakhir</p>
         <div className="mt-4 flex h-28 items-end gap-2">
-          {weeklyFormQuality.map(({ weekLabel, formRate }, i) => (
-            <div key={weekLabel} className="flex flex-1 flex-col items-center gap-1">
-              <div
-                className={`w-full rounded-md ${i === weeklyFormQuality.length - 1 ? "bg-primary" : "bg-muted"}`}
-                style={{ height: `${Math.min(100, Math.max(0, formRate))}%` }}
-              />
-              <span className="text-[10px] text-muted-foreground">{weekLabel}</span>
+          {dailyFormQuality.map(({ dayLabel, formRate }, i) => (
+            <div
+              key={`${dayLabel}-${i}`}
+              className="flex h-full flex-1 flex-col items-center gap-1"
+            >
+              <div className="flex w-full flex-1 items-end">
+                <div
+                  className={`min-h-1 w-full rounded-md ${i === dailyFormQuality.length - 1 ? "bg-primary" : "bg-muted"}`}
+                  style={{ height: `${Math.min(100, Math.max(0, formRate))}%` }}
+                  title={`${dayLabel}: ${formRate}%`}
+                  aria-label={`Kualitas form ${dayLabel} ${formRate}%`}
+                />
+              </div>
+              <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
             </div>
           ))}
         </div>
@@ -127,13 +198,6 @@ function Profile() {
           { icon: Target, label: "Tujuan latihan", value: goalText, to: "/onboarding" as const },
           { icon: Dumbbell, label: "Peralatan", value: equipmentText, to: "/onboarding" as const },
           { icon: Camera, label: "Kamera & kalibrasi", value: "", to: "/profil" as const },
-          { icon: Bell, label: "Pengingat", value: reminderText, to: "/profil" as const },
-          {
-            icon: Shield,
-            label: "Privasi data",
-            value: "Video tidak disimpan",
-            to: "/profil" as const,
-          },
         ].map(({ icon: Icon, label, value, to }) => (
           <Link key={label} to={to} className="flex items-center gap-3 px-4 py-3.5">
             <Icon className="h-4 w-4 shrink-0 text-primary" />
@@ -143,6 +207,15 @@ function Profile() {
           </Link>
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="mx-5 mt-4 flex w-[calc(100%-2.5rem)] items-center justify-center gap-2 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3.5 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+      >
+        <LogOut className="h-4 w-4" />
+        Keluar dari akun
+      </button>
       <BottomNav />
     </div>
   );
