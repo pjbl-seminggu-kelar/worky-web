@@ -108,6 +108,9 @@ export type WorkoutResult = {
   validReps: number;
   invalidReps: number;
   formRate: number;
+  unassessedAttempts?: number;
+  skippedExercises?: string[];
+  events?: { timeSeconds: number; rep: number; set: number; exercise: string; message: string }[];
 };
 
 /* ── Day helpers ── */
@@ -208,7 +211,8 @@ export function shouldRunSessionTimer(options: {
   hasSessionId: boolean;
   hasSessionError: boolean;
 }) {
-  const { phase, isReady, hasItems, remaining, isStarting, hasSessionId, hasSessionError } = options;
+  const { phase, isReady, hasItems, remaining, isStarting, hasSessionId, hasSessionError } =
+    options;
 
   return (
     isReady &&
@@ -221,49 +225,129 @@ export function shouldRunSessionTimer(options: {
 /* ── Static/mock data ── */
 
 export const exercises = [
-  { id: "push-up", slug: "push_up", name: "Push-up", img: pushup, target: "3 × 12 rep", score: 86, category: "UPPER" },
-  { id: "squat", slug: "squat", name: "Squat", img: squat, target: "3 × 15 rep", score: 92, category: "LOWER" },
-  { id: "sit-up", slug: "sit_up", name: "Sit-up", img: situp, target: "3 × 20 rep", score: 74, category: "CORE" },
-  { id: "plank", slug: "plank", name: "Plank", img: plank, target: "3 × 45 dtk", score: 81, category: "CORE" },
-  { id: "pull-up", slug: "pull_up", name: "Pull-up", img: pullup, target: "3 × 8 rep", score: 80, category: "UPPER" },
-  { id: "chair-dips", slug: "chair_dips", name: "Chair Dips", img: dips, target: "3 × 12 rep", score: 78, category: "UPPER" },
+  {
+    id: "push-up",
+    slug: "push_up",
+    name: "Push-up",
+    img: pushup,
+    target: "3 × 12 rep",
+    score: 86,
+    category: "UPPER",
+  },
+  {
+    id: "squat",
+    slug: "squat",
+    name: "Squat",
+    img: squat,
+    target: "3 × 15 rep",
+    score: 92,
+    category: "LOWER",
+  },
+  {
+    id: "sit-up",
+    slug: "sit_up",
+    name: "Sit-up",
+    img: situp,
+    target: "3 × 20 rep",
+    score: 74,
+    category: "CORE",
+  },
+  {
+    id: "plank",
+    slug: "plank",
+    name: "Plank",
+    img: plank,
+    target: "3 × 45 dtk",
+    score: 81,
+    category: "CORE",
+  },
+  {
+    id: "pull-up",
+    slug: "pull_up",
+    name: "Pull-up",
+    img: pullup,
+    target: "3 × 8 rep",
+    score: 80,
+    category: "UPPER",
+  },
+  {
+    id: "chair-dips",
+    slug: "chair_dips",
+    name: "Chair Dips",
+    img: dips,
+    target: "3 × 12 rep",
+    score: 78,
+    category: "UPPER",
+  },
 ];
 
-export const details: Record<string, { muscles: string; camera: string; steps: string[]; checks: string[] }> = {
+export const details: Record<
+  string,
+  { muscles: string; camera: string; steps: string[]; checks: string[] }
+> = {
   "push-up": {
     muscles: "Dada · Trisep · Bahu",
     camera: "Samping, 2–3 m",
-    steps: ["Tangan selebar bahu, badan lurus.", "Turunkan dada hingga siku ±90°.", "Dorong kembali ke posisi awal."],
+    steps: [
+      "Tangan selebar bahu, badan lurus.",
+      "Turunkan dada hingga siku ±90°.",
+      "Dorong kembali ke posisi awal.",
+    ],
     checks: ["Pinggul turun", "Pinggul terlalu tinggi", "Turun kurang dalam", "Kepala menunduk"],
   },
   push_up: {
     muscles: "Dada · Trisep · Bahu",
     camera: "Samping, 2–3 m",
-    steps: ["Tangan selebar bahu, badan lurus.", "Turunkan dada hingga siku ±90°.", "Dorong kembali ke posisi awal."],
+    steps: [
+      "Tangan selebar bahu, badan lurus.",
+      "Turunkan dada hingga siku ±90°.",
+      "Dorong kembali ke posisi awal.",
+    ],
     checks: ["Pinggul turun", "Pinggul terlalu tinggi", "Turun kurang dalam", "Kepala menunduk"],
   },
   squat: {
     muscles: "Paha · Glutes · Core",
     camera: "Samping atau depan",
-    steps: ["Kaki selebar bahu.", "Dorong pinggul ke belakang, turun.", "Paha sejajar lantai, lalu berdiri."],
-    checks: ["Lutut masuk ke dalam", "Tumit terangkat", "Punggung membungkuk", "Turun kurang dalam"],
+    steps: [
+      "Kaki selebar bahu.",
+      "Dorong pinggul ke belakang, turun.",
+      "Paha sejajar lantai, lalu berdiri.",
+    ],
+    checks: [
+      "Lutut masuk ke dalam",
+      "Tumit terangkat",
+      "Punggung membungkuk",
+      "Turun kurang dalam",
+    ],
   },
   "sit-up": {
     muscles: "Perut · Hip flexor",
     camera: "Samping, 2 m",
-    steps: ["Berbaring, lutut ditekuk.", "Angkat badan ke arah lutut.", "Turun perlahan terkontrol."],
+    steps: [
+      "Berbaring, lutut ditekuk.",
+      "Angkat badan ke arah lutut.",
+      "Turun perlahan terkontrol.",
+    ],
     checks: ["Menarik leher", "Gerakan terlalu cepat", "Rentang kurang penuh"],
   },
   sit_up: {
     muscles: "Perut · Hip flexor",
     camera: "Samping, 2 m",
-    steps: ["Berbaring, lutut ditekuk.", "Angkat badan ke arah lutut.", "Turun perlahan terkontrol."],
+    steps: [
+      "Berbaring, lutut ditekuk.",
+      "Angkat badan ke arah lutut.",
+      "Turun perlahan terkontrol.",
+    ],
     checks: ["Menarik leher", "Gerakan terlalu cepat", "Rentang kurang penuh"],
   },
   plank: {
     muscles: "Core · Bahu",
     camera: "Samping, 2–3 m",
-    steps: ["Siku tepat di bawah bahu.", "Badan lurus dari kepala ke tumit.", "Tahan dan bernapas normal."],
+    steps: [
+      "Siku tepat di bawah bahu.",
+      "Badan lurus dari kepala ke tumit.",
+      "Tahan dan bernapas normal.",
+    ],
     checks: ["Pinggul turun", "Pinggul terlalu tinggi", "Kepala menunduk"],
   },
   "pull-up": {
@@ -309,10 +393,21 @@ export const details: Record<string, { muscles: string; camera: string; steps: s
 };
 
 export const plan = [
-  { day: "Sen", date: 19, title: "Upper Body", items: ["Push-up 3×12", "Plank 3×45 dtk"], done: true },
+  {
+    day: "Sen",
+    date: 19,
+    title: "Upper Body",
+    items: ["Push-up 3×12", "Plank 3×45 dtk"],
+    done: true,
+  },
   { day: "Sel", date: 20, title: "Lower Body", items: ["Squat 3×15", "Sit-up 3×20"], today: true },
   { day: "Rab", date: 21, title: "Istirahat aktif", items: ["Stretching 10 mnt"] },
-  { day: "Kam", date: 22, title: "Full Body", items: ["Push-up 3×10", "Squat 3×12", "Plank 2×40 dtk"] },
+  {
+    day: "Kam",
+    date: 22,
+    title: "Full Body",
+    items: ["Push-up 3×10", "Squat 3×12", "Plank 2×40 dtk"],
+  },
   { day: "Jum", date: 23, title: "Istirahat", items: [] },
   { day: "Sab", date: 24, title: "Core", items: ["Sit-up 3×20", "Plank 3×50 dtk"] },
   { day: "Min", date: 25, title: "Istirahat", items: [] },

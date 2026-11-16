@@ -1,0 +1,67 @@
+{
+  "version": "v1",
+  "task": "pushup_depth_classification",
+  "models": {
+    "logreg": {
+      "filename": "logreg_depth_v1.onnx",
+      "sha256": "a37a09af07dbbaaa453ccc24176bd0c50817104c69492ef34346c7ab8e9bff60"
+    },
+    "ann": {
+      "filename": "ann_depth_v1.onnx",
+      "sha256": "b24e94efd4fdda6a2263f92a358c284d0d440c66864344f2963eff4679b8c781"
+    }
+  },
+  "input": {
+    "name": "elbow_angle",
+    "dtype": "float32",
+    "shape": [
+      "batch",
+      1
+    ],
+    "feature": "min_elbow_angle",
+    "unit": "degrees",
+    "scaler_included_in_model": true
+  },
+  "output": {
+    "name": "prob_kurang_turun",
+    "dtype": "float32",
+    "shape": [
+      "batch",
+      1
+    ],
+    "threshold": 0.5
+  },
+  "class_mapping": {
+    "0": "benar",
+    "1": "kurang_turun"
+  },
+  "preprocessing": {
+    "landmarks": "MediaPipe PoseLandmarker",
+    "angle_coordinates": "pixel",
+    "side_selection": {
+      "strategy": "causal_visibility",
+      "calibration_seconds": 1.0,
+      "min_frames": 15,
+      "min_visibility": 0.5,
+      "min_margin": 0.1,
+      "lock_side": true
+    },
+    "segmentation": "FSM v2",
+    "feature_extraction": "rep_features v0",
+    "orientation": "upright_video_coordinates"
+  },
+  "training": {
+    "sessions": [
+      "s01",
+      "s02",
+      "s03",
+      "s04",
+      "s05",
+      "s06"
+    ],
+    "repetitions": 175,
+    "validation": "LeaveOneGroupOut"
+  },
+  "final_test_used": false,
+  "deployment_status": "pending_browser_validation"
+}

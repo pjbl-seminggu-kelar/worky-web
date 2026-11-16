@@ -101,7 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Worky | AI Workout Form Coach" },
       { name: "description", content: "Cek form home workout kamu dengan AI." },
       { property: "og:title", content: "Worky | AI Workout Form Coach" },
@@ -147,6 +147,7 @@ function RootComponent() {
   const navigate = useNavigate();
   const publicRoute = isPublicPath(location.pathname);
   const landingRoute = location.pathname === "/";
+  const cameraRoute = location.pathname === "/sesi";
   const [allowedPath, setAllowedPath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -174,7 +175,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-stage">
         <div
-          className={`relative mx-auto min-h-screen w-full bg-background ${landingRoute ? "" : "max-w-[430px] shadow-2xl"}`}
+          className={`relative mx-auto min-h-screen w-full bg-background ${landingRoute || cameraRoute ? "" : "max-w-[430px] shadow-2xl"}`}
         >
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           {canRenderRoute ? (

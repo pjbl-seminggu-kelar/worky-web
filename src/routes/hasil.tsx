@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Clock, Lightbulb, X } from "lucide-react";
-import { WORKOUT_RESULT_KEY, exercises, type WorkoutResult } from "@/lib/workouts";
+import { WORKOUT_RESULT_KEY, type WorkoutResult } from "@/lib/workouts";
 
 export const Route = createFileRoute("/hasil")({
   head: () => ({
@@ -18,11 +18,6 @@ export const Route = createFileRoute("/hasil")({
   component: Report,
 });
 
-const events = [
-  { t: "00:04", rep: 4, msg: "Pinggul turun" },
-  { t: "00:08", rep: 8, msg: "Gerakan terlalu cepat" },
-];
-
 function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
@@ -30,7 +25,6 @@ function formatDuration(seconds: number) {
 }
 
 function Report() {
-  const fallbackExercise = exercises[0]!;
   const [result, setResult] = useState<WorkoutResult | null>(null);
 
   useEffect(() => {
@@ -38,18 +32,19 @@ function Report() {
       const raw = sessionStorage.getItem(WORKOUT_RESULT_KEY);
       if (raw) setResult(JSON.parse(raw) as WorkoutResult);
     } catch {
-      // Keep the existing preview result when stored data is invalid.
+      // No generated or preview measurements are shown for a missing result.
     }
   }, []);
 
-  const validReps = result?.validReps ?? 32;
-  const invalidReps = result?.invalidReps ?? 4;
+  const validReps = result?.validReps ?? 0;
+  const invalidReps = result?.invalidReps ?? 0;
   const totalReps = validReps + invalidReps;
-  const formRate = result?.formRate ?? 86;
-  const duration = formatDuration(result?.durationSeconds ?? 252);
+  const formRate = result?.formRate ?? 0;
+  const duration = formatDuration(result?.durationSeconds ?? 0);
   const sessionLabel = result
     ? `${result.totalExercises} workout · ${duration}`
-    : `${fallbackExercise.name} · 3 set · ${duration}`;
+    : "Belum ada hasil sesi. Mulai latihan dari plan.";
+  const events = result?.events ?? [];
 
   return (
     <div className="pb-10">
@@ -66,15 +61,19 @@ function Report() {
         </Link>
       </div>
       <div className="px-5">
-        <h1 className="mt-2 text-3xl font-extrabold">Kerja bagus! 💪</h1>
+        <h1 className="mt-2 text-3xl font-extrabold">
+          {result ? "Sesi latihan selesai" : "Belum ada hasil sesi"}
+        </h1>
         <p className="text-sm text-muted-foreground">{result?.planName ?? sessionLabel}</p>
         {result && <p className="mt-1 text-xs text-muted-foreground">{sessionLabel}</p>}
       </div>
 
       <div className="mx-5 mt-5 flex items-center gap-4 rounded-2xl bg-primary p-5 text-primary-foreground">
         <div>
-          <p className="font-display text-5xl font-extrabold">{formRate}%</p>
-          <p className="text-xs opacity-90">Skor form</p>
+          <p className="font-display text-5xl font-extrabold">
+            {totalReps > 0 ? `${formRate}%` : "—"}
+          </p>
+          <p className="text-xs opacity-90">Kedalaman valid</p>
         </div>
         <div className="ml-auto text-right text-sm">
           <p>
@@ -87,6 +86,17 @@ function Report() {
         </div>
       </div>
 
+      {!!result?.unassessedAttempts && (
+        <p className="mx-5 mt-3 text-sm text-muted-foreground">
+          {result.unassessedAttempts} gerakan terputus atau tidak dapat dinilai.
+        </p>
+      )}
+      {!!result?.skippedExercises?.length && (
+        <p className="mx-5 mt-3 text-sm text-muted-foreground">
+          Dilewati tanpa penilaian: {result.skippedExercises.join(", ")}.
+        </p>
+      )}
+
       {result && (
         <div className="mx-5 mt-3 flex flex-wrap gap-2">
           {result.exerciseNames.map((name) => (
@@ -97,19 +107,31 @@ function Report() {
         </div>
       )}
 
-      <h2 className="mt-6 px-5 text-lg font-bold">Timeline kesalahan</h2>
+      <h2 className="mt-6 px-5 text-lg font-bold">Timeline kedalaman</h2>
       <div className="mx-5 mt-2 space-y-2">
+        {events.length === 0 && (
+          <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground">
+            {totalReps
+              ? "Tidak ada repetisi kurang turun yang tercatat."
+              : "Belum ada repetisi yang dinilai."}
+          </p>
+        )}
         {events.map((event) => (
           <div
-            key={event.t}
+            key={`${event.exercise}-${event.set}-${event.rep}-${event.timeSeconds}`}
             className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
           >
             <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs font-semibold">
               <Clock className="h-3 w-3" />
-              {event.t}
+              {formatDuration(Math.floor(event.timeSeconds))}
             </span>
-            <span className="flex-1 text-sm">{event.msg}</span>
-            <span className="text-xs text-muted-foreground">Rep {event.rep}</span>
+            <span className="flex-1 text-sm">
+              {event.message}
+              <span className="block text-xs text-muted-foreground">
+                {event.exercise} · Set {event.set}
+              </span>
+            </span>
+            <span className="text-xs text-muted-foreground">Percobaan {event.rep}</span>
           </div>
         ))}
       </div>
@@ -119,14 +141,15 @@ function Report() {
         <div className="flex gap-3 rounded-2xl bg-card p-4">
           <AlertTriangle className="h-5 w-5 shrink-0 text-primary" />
           <p className="text-sm">
-            <span className="font-semibold">Jaga postur sepanjang gerakan.</span> Pertahankan tempo
-            agar setiap repetisi tetap terkontrol.
+            {invalidReps > 0
+              ? "Di set berikutnya, fokus turun lebih dalam sebelum kembali ke posisi atas."
+              : "Penilaian sesi ini menggunakan kedalaman siku dari ANN."}
           </p>
         </div>
         <div className="flex gap-3 rounded-2xl bg-card p-4">
           <Lightbulb className="h-5 w-5 shrink-0 text-secondary" />
           <p className="text-sm">
-            Kurangi kecepatan saat mulai lelah agar form tetap konsisten hingga workout terakhir.
+            Panduan pinggul dari kamera bersifat eksperimental dan tidak masuk skor kedalaman.
           </p>
         </div>
       </div>
