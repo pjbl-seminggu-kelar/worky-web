@@ -32,3 +32,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Docs and agent skills
+/docs/
+/.agents/
+skills-lock.json
