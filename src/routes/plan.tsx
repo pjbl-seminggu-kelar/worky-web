@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { BicepsFlexed, Dumbbell, Footprints, Moon, Play, Target } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/api";
-import { AUTH_TOKEN_KEY } from "@/lib/auth";
+import { AUTH_TOKEN_KEY, ONBOARDING_COMPLETED_KEY } from "@/lib/auth";
 import {
   ACTIVE_PLAN_KEY,
   ACTIVE_WORKOUT_DAY_KEY,
@@ -35,19 +35,96 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   FULL_BODY: Dumbbell,
 };
 
+type WeeklyStreakResponse = {
+  status: "success";
+  data: {
+    days: {
+      dayOfWeek: number;
+      isToday: boolean;
+      status: string;
+    }[];
+  };
+};
+
+function PlanSkeleton() {
+  return (
+    <div className="pb-28">
+      <PageHeader title="Plan" subtitle="Memuat jadwal..." />
+      <div className="animate-pulse px-5 pt-5" role="status" aria-label="Memuat workout plan">
+        <span className="sr-only">Memuat workout plan...</span>
+        <div className="h-52 rounded-3xl border border-border bg-card" />
+        <div className="mt-7 h-4 w-24 rounded bg-muted" />
+        <div className="mt-2.5 space-y-1.5">
+          {Array.from({ length: 7 }, (_, index) => (
+            <div key={index} className="h-12 rounded-xl bg-card" />
+          ))}
+        </div>
+      </div>
+      <BottomNav />
+    </div>
+  );
+}
+
 function Plan() {
   const [activePlan, setActivePlan] = useState<WorkoutPlan | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isClaimingRest, setIsClaimingRest] = useState(false);
   const [restMessage, setRestMessage] = useState("");
   const [restClaimed, setRestClaimed] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     try {
       const raw = localStorage.getItem(ACTIVE_PLAN_KEY);
       if (raw) setActivePlan(JSON.parse(raw) as WorkoutPlan);
     } catch {
       // ignore parse errors
     }
+
+    async function hydratePlan() {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      if (!token) {
+        if (isMounted) setIsLoading(false);
+        return;
+      }
+
+      const [planRes, streakRes] = await Promise.all([
+        apiFetch<{ status: string; data: WorkoutPlan | null }>("/plans/active", { token }).catch(
+          () => null,
+        ),
+        apiFetch<WeeklyStreakResponse>("/plans/weekly-streak", { token }).catch(() => null),
+      ]);
+
+      if (!isMounted) return;
+
+      if (planRes?.data) {
+        setActivePlan(planRes.data);
+        localStorage.setItem(ACTIVE_PLAN_KEY, JSON.stringify(planRes.data));
+        localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
+      } else if (planRes && planRes.data === null) {
+        setActivePlan(null);
+        localStorage.removeItem(ACTIVE_PLAN_KEY);
+      }
+
+      const days = streakRes?.data?.days;
+      if (days) {
+        const jsDay = new Date().getDay();
+        const todayDow = jsDay === 0 ? 7 : jsDay;
+        const todayStreak = days.find((d) => d.isToday || d.dayOfWeek === todayDow);
+        if (todayStreak?.status === "REST_CLAIMED") {
+          setRestClaimed(true);
+        }
+      }
+
+      setIsLoading(false);
+    }
+
+    void hydratePlan();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   async function handleRestDayCheckin() {
@@ -75,6 +152,10 @@ function Plan() {
   }
 
   if (!activePlan) {
+    if (isLoading) {
+      return <PlanSkeleton />;
+    }
+
     return (
       <div className="pb-28">
         <PageHeader title="Plan" subtitle="Belum ada plan" />

@@ -1,9 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Check, ChevronLeft, Loader2 } from "lucide-react";
-import { AUTH_TOKEN_KEY, AUTH_USER_KEY, ONBOARDING_COMPLETED_KEY, type AuthUser } from "@/lib/auth";
+import {
+  AUTH_TOKEN_KEY,
+  AUTH_USER_KEY,
+  ONBOARDING_COMPLETED_KEY,
+  buildProfileUpdatePayload,
+  mapUserToOnboardingState,
+  type AuthUser,
+  type ProfileResponse,
+} from "@/lib/auth";
 import { apiFetch, ApiError } from "@/lib/api";
-import type { GeneratePlanResponse } from "@/lib/workouts";
+import { ACTIVE_PLAN_KEY, type GeneratePlanResponse } from "@/lib/workouts";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -150,18 +158,66 @@ function Onboarding() {
 
   // Steps 1–5: option selections
   const [picked, setPicked] = useState<Record<number, string[]>>({});
+  const [displayName, setDisplayName] = useState("");
+  const [reminderTime, setReminderTime] = useState<string | null>(null);
 
   const [isFirstVisit, setIsFirstVisit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const last = step === TOTAL_STEPS - 1;
 
+  function applyUserPrefill(user: AuthUser) {
+    const mapped = mapUserToOnboardingState(user);
+    if (mapped.displayName) setDisplayName(mapped.displayName);
+    if (mapped.reminderTime) setReminderTime(mapped.reminderTime);
+    if (mapped.age) setAge(mapped.age);
+    if (mapped.weight) setWeight(mapped.weight);
+    if (Object.keys(mapped.picked).length > 0) {
+      setPicked((current) => ({ ...current, ...mapped.picked }));
+    }
+  }
+
   useEffect(() => {
+    let isMounted = true;
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+
     // First visit = user just registered (has token) but hasn't completed onboarding yet
     setIsFirstVisit(
-      localStorage.getItem(AUTH_TOKEN_KEY) !== null &&
-        localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== "true",
+      token !== null && localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== "true",
     );
+
+    try {
+      const raw = localStorage.getItem(AUTH_USER_KEY);
+      if (raw) {
+        applyUserPrefill(JSON.parse(raw) as AuthUser);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    if (!token) return;
+
+    async function fetchProfile() {
+      try {
+        const res = await apiFetch<ProfileResponse | { status: "success"; data: AuthUser }>(
+          "/users/me",
+          { token },
+        );
+        if (!isMounted || !res?.data) return;
+
+        const fetchedUser = "user" in res.data ? res.data.user : res.data;
+        applyUserPrefill(fetchedUser);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(fetchedUser));
+      } catch {
+        // Fallback to cached profile if fetch fails
+      }
+    }
+
+    void fetchProfile();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   /** Whether the current step has valid input to proceed */
@@ -206,18 +262,22 @@ function Onboarding() {
     try {
       const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? "";
 
-      // Read displayName from saved user
-      let displayName = "";
-      try {
-        const raw = localStorage.getItem(AUTH_USER_KEY);
-        if (raw) displayName = (JSON.parse(raw) as { displayName?: string }).displayName ?? "";
-      } catch {
-        /* ignore */
+      // Read displayName from state or saved user
+      let resolvedDisplayName = displayName.trim();
+      if (!resolvedDisplayName) {
+        try {
+          const raw = localStorage.getItem(AUTH_USER_KEY);
+          if (raw) {
+            resolvedDisplayName = ((JSON.parse(raw) as { displayName?: string }).displayName ?? "").trim();
+          }
+        } catch {
+          /* ignore */
+        }
       }
 
       const goal = GOAL_MAP[picked[1]?.[0] ?? ""] ?? "GENERAL_FITNESS";
       const experienceLevel = LEVEL_MAP[picked[2]?.[0] ?? ""] ?? "BEGINNER";
-      const equipment = (picked[3] && picked[3].length > 0) ? picked[3] : ["Tanpa alat"];
+      const equipment = picked[3] && picked[3].length > 0 ? picked[3] : ["Tanpa alat"];
       const sessionsPerWeek = FREQUENCY_MAP[picked[4]?.[0] ?? ""] ?? 4;
       const sessionDurationMinutes = DURATION_MAP[picked[5]?.[0] ?? ""] ?? 20;
 
@@ -225,8 +285,8 @@ function Onboarding() {
       const userResponse = await apiFetch<{ status: string; data: AuthUser }>("/users/me", {
         method: "PUT",
         token,
-        body: {
-          displayName,
+        body: buildProfileUpdatePayload({
+          displayName: resolvedDisplayName,
           age: Number(age),
           weightKg: Number(weight),
           goal,
@@ -234,8 +294,8 @@ function Onboarding() {
           sessionsPerWeek,
           sessionDurationMinutes,
           equipment,
-          reminderTime: "18:30",
-        },
+          reminderTime,
+        }),
       });
 
       if (userResponse?.data) {
@@ -250,7 +310,7 @@ function Onboarding() {
       });
 
       // Simpan plan aktif dan tandai onboarding selesai
-      localStorage.setItem("worky:active-plan", JSON.stringify(planResponse.data));
+      localStorage.setItem(ACTIVE_PLAN_KEY, JSON.stringify(planResponse.data));
       localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
 
       await navigate({ to: "/home", replace: true });

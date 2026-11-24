@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { AuthLayout, EmailField, PasswordToggle, SubmitButton } from "@/components/AuthLayout";
 import { apiFetch, ApiError } from "@/lib/api";
 import { saveAuthSession, ONBOARDING_COMPLETED_KEY, type AuthResponse } from "@/lib/auth";
+import { ACTIVE_PLAN_KEY, type WorkoutPlan } from "@/lib/workouts";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -38,8 +39,27 @@ function Login() {
         body: form,
       });
       saveAuthSession(response);
-      const destination = localStorage.getItem(ONBOARDING_COMPLETED_KEY) === "true" ? "/home" : "/onboarding";
-      await navigate({ to: destination, replace: true });
+
+      let activePlan: WorkoutPlan | null = null;
+      try {
+        const planResponse = await apiFetch<{ status: string; data: WorkoutPlan | null }>(
+          "/plans/active",
+          { token: response.data.token },
+        );
+        activePlan = planResponse?.data ?? null;
+      } catch {
+        activePlan = null;
+      }
+
+      if (activePlan !== null) {
+        localStorage.setItem(ACTIVE_PLAN_KEY, JSON.stringify(activePlan));
+        localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
+        await navigate({ to: "/home", replace: true });
+      } else {
+        localStorage.removeItem(ACTIVE_PLAN_KEY);
+        localStorage.removeItem(ONBOARDING_COMPLETED_KEY);
+        await navigate({ to: "/onboarding", replace: true });
+      }
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError
@@ -67,7 +87,7 @@ function Login() {
           <div className="flex items-center rounded-2xl border border-border bg-card px-4 focus-within:border-primary">
             <input
               required
-              minLength={8}
+              minLength={6}
               autoComplete="current-password"
               type={showPassword ? "text" : "password"}
               value={form.password}

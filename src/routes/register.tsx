@@ -86,12 +86,12 @@ function Register() {
           <div className="flex items-center rounded-2xl border border-border bg-card px-4 focus-within:border-primary">
             <input
               required
-              minLength={8}
+              minLength={6}
               autoComplete="new-password"
               type={showPassword ? "text" : "password"}
               value={form.password}
               onChange={(event) => setForm({ ...form, password: event.target.value })}
-              placeholder="Minimal 8 karakter"
+              placeholder="Minimal 6 karakter"
               className="h-14 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
             <PasswordToggle visible={showPassword} onClick={() => setShowPassword(!showPassword)} />
