@@ -120,6 +120,18 @@ const EQUIPMENT_SLUG_TO_LABEL: Record<string, string> = {
   "kursi / bangku": "Kursi / bangku",
 };
 
+export function formatEquipmentLabels(equipment?: string[]): string {
+  if (!equipment || equipment.length === 0) return "Tanpa alat";
+  const labels = Array.from(
+    new Set(
+      equipment
+        .map((item) => EQUIPMENT_SLUG_TO_LABEL[item.trim().toLowerCase()] ?? item.trim())
+        .filter(Boolean),
+    ),
+  );
+  return labels.length > 0 ? labels.join(", ") : "Tanpa alat";
+}
+
 const REVERSE_DURATION_MAP: Record<number, string> = {
   15: "15 menit",
   20: "20 menit",

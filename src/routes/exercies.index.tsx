@@ -6,6 +6,8 @@ import { apiFetch } from "@/lib/api";
 import { AUTH_TOKEN_KEY } from "@/lib/auth";
 import { getExerciseImage } from "@/lib/workouts";
 import {
+  cvStatusBadgeClass,
+  cvStatusLabel,
   exercisesEndpoint,
   searchExercises,
   exerciseRouteId,
@@ -219,6 +221,11 @@ function Library() {
                 params={{ id: routeId }}
                 className="group relative flex flex-col justify-between rounded-2xl bg-cream p-3 transition-transform active:scale-[0.98]"
               >
+                <span
+                  className={`absolute right-2.5 top-2.5 z-10 rounded-full px-2 py-0.5 text-[10px] font-bold ${cvStatusBadgeClass(e.cvStatus)}`}
+                >
+                  {cvStatusLabel(e.cvStatus)}
+                </span>
                 <div>
                   <div className="relative aspect-square w-full overflow-hidden">
                     <img

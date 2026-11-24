@@ -1,7 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Check, Flame, Play, Settings, CalendarDays, Camera, Dumbbell, X } from "lucide-react";
-import { exercises } from "@/lib/workouts";
+import { Check, Flame, Play, Settings, CalendarDays, Camera, X } from "lucide-react";
+import { getExerciseImage } from "@/lib/workouts";
+import {
+  cvStatusBadgeClass,
+  cvStatusLabel,
+  exerciseRouteId,
+  formatExerciseTarget,
+  type Exercise,
+  type ExercisesResponse,
+} from "@/lib/exercises";
 import { BottomNav } from "@/components/BottomNav";
 import { AUTH_TOKEN_KEY, ONBOARDING_COMPLETED_KEY } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
@@ -88,6 +96,8 @@ function Index() {
   const [weeklyStreak, setWeeklyStreak] = useState<WeeklyStreak | null>(null);
   const [isStreakLoading, setIsStreakLoading] = useState(true);
   const [streakError, setStreakError] = useState("");
+  const [exercisesList, setExercisesList] = useState<Exercise[]>([]);
+  const [isExercisesLoading, setIsExercisesLoading] = useState(true);
 
   useEffect(() => {
     if (!localStorage.getItem(AUTH_TOKEN_KEY)) {
@@ -135,7 +145,18 @@ function Index() {
       }
     }
 
-    void Promise.all([fetchSessionHistory(), fetchWeeklyStreak()]);
+    async function fetchExercises() {
+      try {
+        const response = await apiFetch<ExercisesResponse>("/exercises", token ? { token } : {});
+        if (isMounted) setExercisesList(response.data ?? []);
+      } catch (error) {
+        console.error("Gagal memuat daftar gerakan:", error);
+      } finally {
+        if (isMounted) setIsExercisesLoading(false);
+      }
+    }
+
+    void Promise.all([fetchSessionHistory(), fetchWeeklyStreak(), fetchExercises()]);
 
     return () => {
       isMounted = false;
@@ -258,7 +279,7 @@ function Index() {
             <h3 className="text-lg font-bold">Live Check</h3>
             <p className="text-xs opacity-90">Kamera + AI realtime</p>
             <Camera className="absolute bottom-3 right-3 h-12 w-12 opacity-30" />
-            <p className="mt-10 text-xs font-semibold">6 gerakan</p>
+            <p className="mt-10 text-xs font-semibold">{exercisesList.length} gerakan</p>
           </Link>
           <Link
             to="/plan"
@@ -267,7 +288,9 @@ function Index() {
             <h3 className="text-lg font-bold">Planner</h3>
             <p className="text-xs opacity-90">Jadwal sesuai tujuan</p>
             <CalendarDays className="absolute bottom-3 right-3 h-12 w-12 opacity-30" />
-            <p className="mt-10 text-xs font-semibold">4 sesi/minggu</p>
+            <p className="mt-10 text-xs font-semibold">
+              {weeklyStreak?.weeklySummary.targetSessions ?? 0} sesi/minggu
+            </p>
           </Link>
         </div>
       </section>
@@ -275,25 +298,52 @@ function Index() {
       <section className="mt-7">
         <h2 className="px-5 text-xl font-bold">Gerakan</h2>
         <div className="mt-3 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
-          {exercises.map((e) => (
-            <Link
-              key={e.id}
-              to="/exercies/$id"
-              params={{ id: e.id }}
-              className="w-32 shrink-0 rounded-2xl bg-cream p-2"
-            >
-              <img
-                src={e.img}
-                alt={e.name}
-                loading="lazy"
-                width={816}
-                height={816}
-                className="aspect-square w-full object-contain"
-              />
-              <p className="px-1 text-sm font-bold text-background">{e.name}</p>
-              <p className="px-1 pb-1 text-[11px] text-background/60">{e.target}</p>
-            </Link>
-          ))}
+          {isExercisesLoading &&
+            Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                aria-hidden="true"
+                className="w-32 shrink-0 animate-pulse rounded-2xl border border-border bg-card p-2"
+              >
+                <div className="aspect-square w-full rounded-xl bg-muted" />
+                <div className="mt-2 h-3.5 w-3/4 rounded bg-muted" />
+                <div className="mt-1 h-2.5 w-1/2 rounded bg-muted" />
+              </div>
+            ))}
+
+          {!isExercisesLoading && exercisesList.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
+              Daftar gerakan belum dapat dimuat.
+            </p>
+          )}
+
+          {!isExercisesLoading &&
+            exercisesList.map((e) => (
+              <Link
+                key={e.id}
+                to="/exercies/$id"
+                params={{ id: exerciseRouteId(e.slug) }}
+                className="relative w-32 shrink-0 rounded-2xl bg-cream p-2 transition-transform active:scale-[0.98]"
+              >
+                <span
+                  className={`absolute right-2 top-2 z-10 rounded-full px-2 py-0.5 text-[10px] font-bold ${cvStatusBadgeClass(e.cvStatus)}`}
+                >
+                  {cvStatusLabel(e.cvStatus)}
+                </span>
+                <img
+                  src={getExerciseImage(e.slug, e.imageUrl)}
+                  alt={e.name}
+                  loading="lazy"
+                  width={816}
+                  height={816}
+                  className="aspect-square w-full object-contain"
+                />
+                <p className="truncate px-1 text-sm font-bold text-background">{e.name}</p>
+                <p className="px-1 pb-1 text-[11px] text-background/60">
+                  {formatExerciseTarget(e)}
+                </p>
+              </Link>
+            ))}
         </div>
       </section>
 
@@ -333,32 +383,30 @@ function Index() {
           {!isHistoryLoading &&
             !historyError &&
             sessionHistory.map((session) => {
-              const exerciseImage = exercises.find(
+              const matchedExercise = exercisesList.find(
                 (exercise) => exercise.slug === session.exercise.slug,
-              )?.img;
+              );
+              const exerciseImage = getExerciseImage(
+                session.exercise.slug,
+                matchedExercise?.imageUrl,
+              );
 
               return (
                 <Link
                   to="/hasil"
+                  search={{ sessionId: session.id }}
                   key={session.id}
                   className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
                 >
                   <div className="h-12 w-12 shrink-0 rounded-xl bg-cream p-1">
-                    {exerciseImage ? (
-                      <img
-                        src={exerciseImage}
-                        alt=""
-                        loading="lazy"
-                        width={816}
-                        height={816}
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <Dumbbell
-                        className="h-full w-full p-2 text-background/60"
-                        aria-hidden="true"
-                      />
-                    )}
+                    <img
+                      src={exerciseImage}
+                      alt=""
+                      loading="lazy"
+                      width={816}
+                      height={816}
+                      className="h-full w-full object-contain"
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold">{session.sessionName}</p>

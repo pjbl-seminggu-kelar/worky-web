@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { exercisesEndpoint, searchExercises, type Exercise } from "@/lib/exercises";
+import {
+  cvStatusLabel,
+  exercisesEndpoint,
+  findLatestExerciseFormScore,
+  searchExercises,
+  type Exercise,
+} from "@/lib/exercises";
 
 const exercises: Exercise[] = [
   {
@@ -53,5 +59,42 @@ describe("exercise catalog helpers", () => {
 
   it("returns an empty result when nothing matches", () => {
     expect(searchExercises(exercises, "burpee")).toEqual([]);
+  });
+
+  it("maps cvStatus to Indonesian badge labels", () => {
+    expect(cvStatusLabel("VALIDATED")).toBe("AI Aktif");
+    expect(cvStatusLabel("EXPERIMENTAL")).toBe("Beta");
+    expect(cvStatusLabel("PLANNED")).toBe("Segera");
+  });
+
+  it("finds the latest exercise form score or falls back to em dash", () => {
+    expect(findLatestExerciseFormScore([], "push_up")).toBe("—");
+
+    const history = [
+      {
+        startedAt: "2026-11-10T10:00:00.000Z",
+        totalReps: 10,
+        validReps: 6,
+        validRepRate: 60,
+        exercise: { slug: "push_up" },
+      },
+      {
+        startedAt: "2026-11-12T10:00:00.000Z",
+        totalReps: 10,
+        validReps: 9,
+        validRepRate: 0.9,
+        exercise: { slug: "push_up" },
+      },
+      {
+        startedAt: "2026-11-13T10:00:00.000Z",
+        totalReps: 10,
+        validReps: 8,
+        exercise: { slug: "squat" },
+      },
+    ];
+
+    expect(findLatestExerciseFormScore(history, "push-up")).toBe("90%");
+    expect(findLatestExerciseFormScore(history, "squat")).toBe("80%");
+    expect(findLatestExerciseFormScore(history, "plank")).toBe("—");
   });
 });

@@ -8,6 +8,7 @@ import {
   AUTH_USER_KEY,
   buildLast7DaysFormQuality,
   clearAuthSession,
+  formatEquipmentLabels,
   type AuthUser,
   type ProfileResponse,
   type SessionFormHistory,
@@ -135,7 +136,7 @@ function Profile() {
   const ageText = user?.age != null ? `${user.age} th` : "-";
   const weightText = user?.weightKg != null ? `${user.weightKg} kg` : "-";
   const goalText = user?.goal ? goalLabel(user.goal) : "-";
-  const equipmentText = user?.equipment?.length ? user.equipment.join(", ") : "Tanpa alat";
+  const equipmentText = formatEquipmentLabels(user?.equipment);
   const dailyFormQuality = buildLast7DaysFormQuality(sessionHistory);
 
   function handleLogout() {
@@ -197,7 +198,7 @@ function Profile() {
         {[
           { icon: Target, label: "Tujuan latihan", value: goalText, to: "/onboarding" as const },
           { icon: Dumbbell, label: "Peralatan", value: equipmentText, to: "/onboarding" as const },
-          { icon: Camera, label: "Kamera & kalibrasi", value: "", to: "/profil" as const },
+          { icon: Camera, label: "Kamera & kalibrasi", value: "", to: "/sesi" as const },
         ].map(({ icon: Icon, label, value, to }) => (
           <Link key={label} to={to} className="flex items-center gap-3 px-4 py-3.5">
             <Icon className="h-4 w-4 shrink-0 text-primary" />

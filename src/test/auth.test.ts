@@ -7,6 +7,7 @@ import {
   buildLast7DaysFormQuality,
   buildProfileUpdatePayload,
   clearAuthSession,
+  formatEquipmentLabels,
   mapUserToOnboardingState,
 } from "@/lib/auth";
 
@@ -128,5 +129,16 @@ describe("buildProfileUpdatePayload", () => {
 
     expect(payload.displayName).toBe("Budi");
     expect(payload.reminderTime).toBe("18:30");
+  });
+});
+
+describe("formatEquipmentLabels", () => {
+  it("formats backend equipment slugs into readable Indonesian labels", () => {
+    expect(formatEquipmentLabels(["exercise_mat", "chair", "pull_up_bar"])).toBe(
+      "Matras, Kursi / bangku, Pull-up bar",
+    );
+    expect(formatEquipmentLabels(["none"])).toBe("Tanpa alat");
+    expect(formatEquipmentLabels([])).toBe("Tanpa alat");
+    expect(formatEquipmentLabels(undefined)).toBe("Tanpa alat");
   });
 });

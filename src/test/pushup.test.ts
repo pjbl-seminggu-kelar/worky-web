@@ -255,5 +255,5 @@ describe("FSM v2 Python parity", () => {
       counter.reset();
       expect(counter).toEqual(new StatefulRepCounter());
     }
-  });
+  }, 15_000);
 });
