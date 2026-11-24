@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const WORKY_API_URL = "https://api-worky.vercel.app/api/v1";
+const WORKY_API_URL = (
+  process.env["VITE_API_BASE_URL"] || "https://api-worky.vercel.app/api/v1"
+).replace(/\/$/, "");
 
 type ProxyContext = {
   request: Request;

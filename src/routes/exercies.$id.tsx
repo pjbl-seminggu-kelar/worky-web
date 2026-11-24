@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, Camera, Target, Minus, Plus } from "lucide-react";
-import { exercises, details, getExerciseImage } from "@/lib/workouts";
+import { getExerciseImage } from "@/lib/workouts";
 import { apiFetch } from "@/lib/api";
 import { AUTH_TOKEN_KEY } from "@/lib/auth";
 import { findLatestExerciseFormScore, type ExerciseSessionSummary } from "@/lib/exercises";
@@ -71,27 +71,7 @@ export const Route = createFileRoute("/exercies/$id")({
         },
       };
     } catch {
-      // Fallback to static mock if offline or API error
-      const dashId = rawId.replace(/_/g, "-");
-      const ex = exercises.find((e) => e.id === rawId || e.id === dashId || e.slug === slug);
-      const d = details[rawId] || details[dashId] || details[slug];
-      if (!ex || !d) throw notFound();
-
-      return {
-        ex: {
-          slug: ex.slug,
-          name: ex.name,
-          img: ex.img || getExerciseImage(ex.slug),
-        },
-        d,
-        isDuration: ex.slug === "plank",
-        defaults: {
-          sets: 3,
-          targetReps: 12,
-          targetDurationSeconds: 45,
-          restSeconds: 45,
-        },
-      };
+      throw notFound();
     }
   },
   head: ({ loaderData }) => ({

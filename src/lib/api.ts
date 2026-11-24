@@ -39,7 +39,12 @@ export function resolveApiUrl(endpoint: string): string {
   const envUrl = import.meta.env["VITE_API_BASE_URL"]?.replace(/\/$/, "");
 
   if (typeof window === "undefined") {
-    return `${WORKY_UPSTREAM_URL}/${clean}`;
+    const serverUrl =
+      (typeof process !== "undefined" ? process.env["VITE_API_BASE_URL"] : undefined)?.replace(
+        /\/$/,
+        "",
+      ) || WORKY_UPSTREAM_URL;
+    return `${serverUrl}/${clean}`;
   }
 
   // If envUrl is empty, points to api-worky, or points to localhost:5000,

@@ -7,7 +7,6 @@ import {
   ACTIVE_PLAN_KEY,
   ACTIVE_WORKOUT_DAY_KEY,
   WORKOUT_RESULT_KEY,
-  exercises as staticExercises,
   formatSetsShort,
   getWorkoutDay,
   type WorkoutPlan,
@@ -113,7 +112,7 @@ function Session() {
     async function loadWorkout() {
       if (search.exerciseSlug) {
         const normalizedSlug = search.exerciseSlug.toLowerCase().replace(/-/g, "_");
-        let exerciseData: {
+        type SingleExerciseDetail = {
           id: string;
           slug: string;
           name: string;
@@ -123,31 +122,17 @@ function Session() {
           defaultTargetReps?: number | null;
           defaultTargetDurationSeconds?: number | null;
           defaultRestSeconds?: number;
-        } | null = null;
+        };
+        let exerciseData: SingleExerciseDetail | null = null;
 
         try {
-          const response = await apiFetch<{ status: string; data: typeof exerciseData }>(
+          const response = await apiFetch<{ status: string; data: SingleExerciseDetail | null }>(
             `/exercises/${normalizedSlug}`,
             { token: localStorage.getItem(AUTH_TOKEN_KEY) },
           );
           exerciseData = response?.data ?? null;
         } catch {
-          const fallback = staticExercises.find(
-            (ex) =>
-              ex.slug === normalizedSlug || ex.id === search.exerciseSlug?.toLowerCase(),
-          );
-          if (fallback) {
-            exerciseData = {
-              id: fallback.id,
-              slug: fallback.slug,
-              name: fallback.name,
-              category: fallback.category,
-              defaultSets: 3,
-              defaultTargetReps: fallback.slug === "plank" ? null : 12,
-              defaultTargetDurationSeconds: fallback.slug === "plank" ? 45 : null,
-              defaultRestSeconds: 45,
-            };
-          }
+          exerciseData = null;
         }
 
         if (cancelled) return;
