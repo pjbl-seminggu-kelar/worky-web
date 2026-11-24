@@ -1,9 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Clock, Lightbulb, X } from "lucide-react";
-import { WORKOUT_RESULT_KEY, type WorkoutResult } from "@/lib/workouts";
+import { apiFetch } from "@/lib/api";
+import { AUTH_TOKEN_KEY } from "@/lib/auth";
+import {
+  WORKOUT_RESULT_KEY,
+  mapSessionDetailToWorkoutResult,
+  type SessionDetail,
+  type WorkoutResult,
+} from "@/lib/workouts";
+
+type HasilSearch = {
+  sessionId?: string;
+};
 
 export const Route = createFileRoute("/hasil")({
+  validateSearch: (search: Record<string, unknown>): HasilSearch => {
+    const sessionId =
+      typeof search["sessionId"] === "string" && search["sessionId"].trim()
+        ? search["sessionId"].trim()
+        : undefined;
+    return sessionId ? { sessionId } : {};
+  },
   head: () => ({
     meta: [
       { title: "Laporan Sesi | Worky" },
@@ -24,17 +42,90 @@ function formatDuration(seconds: number) {
   return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
+function readCachedWorkoutResult(): WorkoutResult | null {
+  try {
+    const raw = sessionStorage.getItem(WORKOUT_RESULT_KEY);
+    return raw ? (JSON.parse(raw) as WorkoutResult) : null;
+  } catch {
+    return null;
+  }
+}
+
 function Report() {
+  const { sessionId } = Route.useSearch();
   const [result, setResult] = useState<WorkoutResult | null>(null);
+  const [isLoading, setIsLoading] = useState(Boolean(sessionId));
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(WORKOUT_RESULT_KEY);
-      if (raw) setResult(JSON.parse(raw) as WorkoutResult);
-    } catch {
-      // No generated or preview measurements are shown for a missing result.
+    let cancelled = false;
+
+    async function loadReport() {
+      if (!sessionId) {
+        if (!cancelled) {
+          setResult(readCachedWorkoutResult());
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const res = await apiFetch<{ status?: string; data?: SessionDetail } | SessionDetail>(
+          `/sessions/${sessionId}`,
+          { token: localStorage.getItem(AUTH_TOKEN_KEY) },
+        );
+        if (cancelled) return;
+        const sessionData = "data" in res && res.data ? res.data : (res as SessionDetail);
+        if (sessionData && sessionData.id) {
+          setResult(mapSessionDetailToWorkoutResult(sessionData));
+        } else {
+          setResult(readCachedWorkoutResult());
+        }
+      } catch {
+        if (!cancelled) {
+          setResult(readCachedWorkoutResult());
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     }
-  }, []);
+
+    void loadReport();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  if (isLoading) {
+    return (
+      <div className="pb-10">
+        <div className="flex items-center justify-between px-5 pt-5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Memuat laporan
+          </span>
+          <Link
+            to="/home"
+            aria-label="Tutup"
+            className="grid h-10 w-10 place-items-center rounded-full bg-card"
+          >
+            <X className="h-5 w-5" />
+          </Link>
+        </div>
+        <div className="animate-pulse px-5 pt-3" role="status" aria-label="Memuat laporan sesi">
+          <span className="sr-only">Memuat laporan sesi...</span>
+          <div className="h-9 w-2/3 rounded-lg bg-muted" />
+          <div className="mt-2 h-4 w-1/2 rounded bg-muted" />
+          <div className="mt-5 h-28 rounded-2xl bg-muted" />
+          <div className="mt-6 h-5 w-40 rounded bg-muted" />
+          <div className="mt-2 space-y-2">
+            <div className="h-16 rounded-2xl bg-muted" />
+            <div className="h-16 rounded-2xl bg-muted" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const validReps = result?.validReps ?? 0;
   const invalidReps = result?.invalidReps ?? 0;

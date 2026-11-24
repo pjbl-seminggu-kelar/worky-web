@@ -101,6 +101,8 @@ export const ACTIVE_WORKOUT_DAY_KEY = "worky:active-workout-day";
 export const WORKOUT_RESULT_KEY = "worky:workout-result";
 
 export type WorkoutResult = {
+  sessionId?: string;
+  lastCompletedSessionId?: string;
   planName: string;
   exerciseNames: string[];
   totalExercises: number;
@@ -112,6 +114,76 @@ export type WorkoutResult = {
   skippedExercises?: string[];
   events?: { timeSeconds: number; rep: number; set: number; exercise: string; message: string }[];
 };
+
+export type WorkoutSessionEvent = {
+  id?: string;
+  eventType: string;
+  repIndex?: number | null;
+  errorCode?: string | null;
+  startMs?: number | null;
+  confidence?: number | null;
+  details?: {
+    minAngle?: number;
+    set?: number;
+    message?: string;
+  } | null;
+};
+
+export type SessionDetail = {
+  id: string;
+  sessionName?: string | null;
+  startedAt?: string;
+  activeDurationSeconds?: number | null;
+  totalReps?: number | null;
+  validReps?: number | null;
+  invalidReps?: number | null;
+  unassessedAttempts?: number | null;
+  validRepRate?: number | null;
+  exercise?: {
+    id?: string;
+    name: string;
+    slug: string;
+    category?: string;
+  } | null;
+  workoutEvents?: WorkoutSessionEvent[] | null;
+};
+
+export function mapSessionDetailToWorkoutResult(session: SessionDetail): WorkoutResult {
+  const validReps = session.validReps ?? 0;
+  const invalidReps = session.invalidReps ?? Math.max(0, (session.totalReps ?? 0) - validReps);
+  const totalReps = validReps + invalidReps;
+  const formRate = totalReps > 0 ? Math.round((validReps / totalReps) * 100) : 0;
+  const exerciseName = session.exercise?.name ?? session.sessionName ?? "Latihan";
+  const events = (session.workoutEvents ?? [])
+    .filter(
+      (event) => event.eventType === "INVALID_REP" || event.eventType === "FORM_ERROR_START",
+    )
+    .map((event, index) => ({
+      timeSeconds: typeof event.startMs === "number" ? Math.max(0, event.startMs / 1000) : 0,
+      rep: event.repIndex ?? index + 1,
+      set: typeof event.details?.set === "number" ? event.details.set : 1,
+      exercise: exerciseName,
+      message:
+        event.details?.message ||
+        (event.errorCode === "shallow_depth"
+          ? "Kurang turun"
+          : event.errorCode || "Perlu koreksi form"),
+    }));
+
+  return {
+    sessionId: session.id,
+    lastCompletedSessionId: session.id,
+    planName: session.sessionName ?? exerciseName,
+    exerciseNames: [exerciseName],
+    totalExercises: 1,
+    durationSeconds: Math.max(0, Math.round(session.activeDurationSeconds ?? 0)),
+    validReps,
+    invalidReps,
+    formRate,
+    unassessedAttempts: session.unassessedAttempts ?? 0,
+    events,
+  };
+}
 
 /* ── Day helpers ── */
 

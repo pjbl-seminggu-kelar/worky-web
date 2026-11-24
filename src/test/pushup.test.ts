@@ -37,7 +37,7 @@ const rep = (valid: boolean): WorkoutAction => ({
 });
 
 describe("push-up session progression", () => {
-  it("requires 12 ANN-valid reps per set, rests 15 seconds between sets and 30 between exercises", () => {
+  it("requires 12 ANN-valid reps per set, rests item.restSeconds between sets and 30 between exercises", () => {
     const items = [item(), { ...item(), id: "second" }];
     let state = initialWorkoutState();
     const send = (action: WorkoutAction) => {
@@ -54,10 +54,10 @@ describe("push-up session progression", () => {
       send(rep(true));
       if (set < 3) {
         expect(state.phase).toBe("set-rest");
-        expect(state.remaining).toBe(15);
+        expect(state.remaining).toBe(99);
         send(rep(true));
         expect(state.stats.valid).toBe(set * 12);
-        send({ type: "tick", seconds: 14 });
+        send({ type: "tick", seconds: 98 });
         expect(state.phase).toBe("set-rest");
         send({ type: "tick", seconds: 1 });
         expect(state.phase).toBe("work");

@@ -1,3 +1,4 @@
+import { apiFetch } from "../api";
 import type { WorkoutPlanItem } from "../workouts";
 
 export type RepRecord = {
@@ -96,6 +97,7 @@ export function reduceWorkout(
         invalid: state.stats.invalid + Number(!action.valid),
       };
       const done = setValid >= item.targetReps!;
+      const restSeconds = item.restSeconds > 0 ? item.restSeconds : 45;
       return {
         ...state,
         stats,
@@ -111,7 +113,7 @@ export function reduceWorkout(
           },
         ],
         phase: done ? (state.set < item.sets ? "set-rest" : "exercise-done") : "work",
-        remaining: done && state.set < item.sets ? 15 : 0,
+        remaining: done && state.set < item.sets ? restSeconds : 0,
       };
     }
     case "tick": {
@@ -158,5 +160,84 @@ export function reduceWorkout(
         stats: emptyStats(),
       };
     }
+  }
+}
+
+export function buildRepEventPayload(rep: RepRecord) {
+  return {
+    eventType: rep.valid ? ("VALID_REP" as const) : ("INVALID_REP" as const),
+    repIndex: rep.attempt,
+    ...(rep.valid ? {} : { errorCode: "shallow_depth" }),
+    startMs: Math.round(rep.timeSeconds * 1000),
+    confidence: rep.probability,
+    details: { minAngle: rep.minAngle, set: rep.set },
+  };
+}
+
+export type RepEventPoster = (
+  endpoint: string,
+  options: {
+    method: "POST";
+    token: string | null;
+    body: ReturnType<typeof buildRepEventPayload>;
+  },
+) => Promise<unknown>;
+
+export async function syncSessionRepEvents(options: {
+  sessionId: string;
+  reps: RepRecord[];
+  sentBySession: Map<string, Set<number>>;
+  token: string | null;
+  postEvent?: RepEventPoster;
+}) {
+  const { sessionId, reps, sentBySession, token, postEvent = apiFetch } = options;
+  if (!sessionId) return;
+
+  let sentSet = sentBySession.get(sessionId);
+  if (!sentSet) {
+    sentSet = new Set<number>();
+    sentBySession.set(sessionId, sentSet);
+  }
+
+  const pending = reps.filter((rep) => !sentSet.has(rep.attempt));
+  await Promise.all(
+    pending.map(async (rep) => {
+      await postEvent(`/sessions/${sessionId}/events`, {
+        method: "POST",
+        token,
+        body: buildRepEventPayload(rep),
+      });
+      sentSet.add(rep.attempt);
+    }),
+  );
+}
+
+export type SessionAbandonPoster = (
+  endpoint: string,
+  options: {
+    method: "POST";
+    token: string | null;
+    body: Record<string, never>;
+  },
+) => Promise<unknown>;
+
+export async function abandonWorkoutSession(options: {
+  sessionId: string;
+  phase: SessionPhase;
+  token: string | null;
+  postAbandon?: SessionAbandonPoster;
+}) {
+  const { sessionId, phase, token, postAbandon = apiFetch } = options;
+  if (!sessionId || phase === "finished" || phase === "exercise-rest") return false;
+
+  try {
+    await postAbandon(`/sessions/${sessionId}/abandon`, {
+      method: "POST",
+      token,
+      body: {},
+    });
+    return true;
+  } catch {
+    return false;
   }
 }

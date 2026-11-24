@@ -7,6 +7,7 @@ import {
   ACTIVE_PLAN_KEY,
   ACTIVE_WORKOUT_DAY_KEY,
   WORKOUT_RESULT_KEY,
+  exercises as staticExercises,
   formatSetsShort,
   getWorkoutDay,
   type WorkoutPlan,
@@ -14,15 +15,48 @@ import {
   type WorkoutResult,
 } from "@/lib/workouts";
 import {
+  abandonWorkoutSession,
   initialWorkoutState,
   pushupSupported,
   reduceWorkout,
+  syncSessionRepEvents,
   type WorkoutAction,
 } from "@/lib/pushup/session";
 import { MODEL_VERSION } from "@/lib/pushup/model";
 import { usePushupCamera } from "@/hooks/use-pushup-camera";
 
+type SessionSearch = {
+  exerciseSlug?: string;
+  sets?: number;
+  targetReps?: number;
+  targetDurationSeconds?: number;
+  restSeconds?: number;
+};
+
+function parseOptionalPositiveInt(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const num = Number(value);
+  return Number.isInteger(num) && num > 0 ? num : undefined;
+}
+
 export const Route = createFileRoute("/sesi")({
+  validateSearch: (search: Record<string, unknown>): SessionSearch => {
+    const exerciseSlug =
+      typeof search["exerciseSlug"] === "string" && search["exerciseSlug"].trim()
+        ? search["exerciseSlug"].trim()
+        : undefined;
+    const sets = parseOptionalPositiveInt(search["sets"]);
+    const targetReps = parseOptionalPositiveInt(search["targetReps"]);
+    const targetDurationSeconds = parseOptionalPositiveInt(search["targetDurationSeconds"]);
+    const restSeconds = parseOptionalPositiveInt(search["restSeconds"]);
+    return {
+      ...(exerciseSlug ? { exerciseSlug } : {}),
+      ...(sets !== undefined ? { sets } : {}),
+      ...(targetReps !== undefined ? { targetReps } : {}),
+      ...(targetDurationSeconds !== undefined ? { targetDurationSeconds } : {}),
+      ...(restSeconds !== undefined ? { restSeconds } : {}),
+    };
+  },
   head: () => ({
     meta: [
       { title: "Sesi Latihan | Worky" },
@@ -40,6 +74,7 @@ function errorMessage(error: unknown, fallback: string) {
 
 function Session() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const video = useRef<HTMLVideoElement>(null),
     canvas = useRef<HTMLCanvasElement>(null);
   const [planName, setPlanName] = useState("");
@@ -56,6 +91,9 @@ function Session() {
   const startPending = useRef(false);
   const [saveNonce, setSaveNonce] = useState(0);
   const saveFlight = useRef<{ id: string; promise: Promise<unknown> } | null>(null);
+  const sentEventsRef = useRef<Map<string, Set<number>>>(new Map());
+  const exerciseRepOffsetRef = useRef(0);
+  const lastCompletedSessionIdRef = useRef("");
   const mounted = useRef(true);
   const startedAt = useRef<number | null>(null);
   const send = useCallback((action: WorkoutAction) => {
@@ -70,9 +108,111 @@ function Session() {
     };
   }, []);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ACTIVE_PLAN_KEY);
-      const plan = raw ? (JSON.parse(raw) as WorkoutPlan) : null;
+    let cancelled = false;
+
+    async function loadWorkout() {
+      if (search.exerciseSlug) {
+        const normalizedSlug = search.exerciseSlug.toLowerCase().replace(/-/g, "_");
+        let exerciseData: {
+          id: string;
+          slug: string;
+          name: string;
+          category: string;
+          equipmentRequired?: string[];
+          defaultSets?: number;
+          defaultTargetReps?: number | null;
+          defaultTargetDurationSeconds?: number | null;
+          defaultRestSeconds?: number;
+        } | null = null;
+
+        try {
+          const response = await apiFetch<{ status: string; data: typeof exerciseData }>(
+            `/exercises/${normalizedSlug}`,
+            { token: localStorage.getItem(AUTH_TOKEN_KEY) },
+          );
+          exerciseData = response?.data ?? null;
+        } catch {
+          const fallback = staticExercises.find(
+            (ex) =>
+              ex.slug === normalizedSlug || ex.id === search.exerciseSlug?.toLowerCase(),
+          );
+          if (fallback) {
+            exerciseData = {
+              id: fallback.id,
+              slug: fallback.slug,
+              name: fallback.name,
+              category: fallback.category,
+              defaultSets: 3,
+              defaultTargetReps: fallback.slug === "plank" ? null : 12,
+              defaultTargetDurationSeconds: fallback.slug === "plank" ? 45 : null,
+              defaultRestSeconds: 45,
+            };
+          }
+        }
+
+        if (cancelled) return;
+        if (exerciseData) {
+          const targetDurationSeconds =
+            search.targetDurationSeconds ??
+            (search.targetReps ? null : (exerciseData.defaultTargetDurationSeconds ?? null));
+          const targetReps =
+            targetDurationSeconds !== null
+              ? null
+              : (search.targetReps ?? exerciseData.defaultTargetReps ?? 12);
+          const item: WorkoutPlanItem = {
+            id: `single-${exerciseData.slug}`,
+            planId: "",
+            exerciseId: exerciseData.id,
+            dayOfWeek: 1,
+            orderIndex: 0,
+            sets: search.sets ?? exerciseData.defaultSets ?? 3,
+            targetReps,
+            targetDurationSeconds,
+            restSeconds: search.restSeconds ?? exerciseData.defaultRestSeconds ?? 45,
+            notes: null,
+            exercise: {
+              id: exerciseData.id,
+              slug: exerciseData.slug,
+              name: exerciseData.name,
+              category: exerciseData.category,
+              equipmentRequired: exerciseData.equipmentRequired ?? [],
+            },
+          };
+          setPlanName(exerciseData.name);
+          itemsRef.current = [item];
+          setItems([item]);
+        }
+        setReady(true);
+        return;
+      }
+
+      let plan: WorkoutPlan | null = null;
+      try {
+        const raw = localStorage.getItem(ACTIVE_PLAN_KEY);
+        if (raw) plan = JSON.parse(raw) as WorkoutPlan;
+      } catch {
+        /* Invalid local data falls back to API fetch below. */
+      }
+
+      if (!plan) {
+        const token = localStorage.getItem(AUTH_TOKEN_KEY);
+        if (token) {
+          try {
+            const planRes = await apiFetch<{ status: string; data: WorkoutPlan | null }>(
+              "/plans/active",
+              { token },
+            );
+            if (planRes?.data) {
+              plan = planRes.data;
+              localStorage.setItem(ACTIVE_PLAN_KEY, JSON.stringify(plan));
+            }
+          } catch {
+            /* Handled by the empty-plan state. */
+          }
+        }
+      }
+
+      if (cancelled) return;
       const day = plan
         ? getWorkoutDay(plan, Number(localStorage.getItem(ACTIVE_WORKOUT_DAY_KEY)) || undefined)
         : null;
@@ -81,11 +221,21 @@ function Session() {
         itemsRef.current = day.planItems;
         setItems(day.planItems);
       }
-    } catch {
-      /* Invalid local data is handled by the empty-plan state. */
+      setReady(true);
     }
-    setReady(true);
-  }, []);
+
+    void loadWorkout();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    search.exerciseSlug,
+    search.sets,
+    search.targetReps,
+    search.targetDurationSeconds,
+    search.restSeconds,
+  ]);
 
   const current = items[state.index];
   const hasWorkout = Boolean(current);
@@ -125,6 +275,7 @@ function Session() {
     setSessionError("");
     setSaveError("");
     saveFlight.current = null;
+    exerciseRepOffsetRef.current = stateRef.current.reps.length;
   }, [state.index]);
 
   useEffect(() => {
@@ -155,25 +306,38 @@ function Session() {
     let cancelled = false;
     setSaveError("");
     if (saveFlight.current?.id !== sessionId) {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
       const { valid, invalid, unassessed, activeSeconds } = stateRef.current.stats;
-      const promise = apiFetch(`/sessions/${sessionId}/complete`, {
-        method: "POST",
-        token: localStorage.getItem(AUTH_TOKEN_KEY),
-        body: {
-          activeDurationSeconds: Math.max(1, Math.round(activeSeconds)),
-          totalAttempts: valid + invalid + unassessed,
-          totalReps: valid + invalid,
-          validReps: valid,
-          invalidReps: invalid,
-          unassessedAttempts: unassessed,
-          validHoldSeconds: 0,
-        },
-      });
+      const exerciseReps = stateRef.current.reps.slice(exerciseRepOffsetRef.current);
+      const promise = (async () => {
+        await syncSessionRepEvents({
+          sessionId,
+          reps: exerciseReps,
+          sentBySession: sentEventsRef.current,
+          token,
+        });
+        return apiFetch(`/sessions/${sessionId}/complete`, {
+          method: "POST",
+          token,
+          body: {
+            activeDurationSeconds: Math.max(1, Math.round(activeSeconds)),
+            totalAttempts: valid + invalid + unassessed,
+            totalReps: valid + invalid,
+            validReps: valid,
+            invalidReps: invalid,
+            unassessedAttempts: unassessed,
+            validHoldSeconds: 0,
+          },
+        });
+      })();
       saveFlight.current = { id: sessionId, promise };
     }
     void saveFlight.current.promise
       .then(() => {
-        if (!cancelled) send({ type: "saved" });
+        if (!cancelled) {
+          lastCompletedSessionIdRef.current = sessionId;
+          send({ type: "saved" });
+        }
       })
       .catch((error) => {
         if (!cancelled) {
@@ -191,7 +355,11 @@ function Session() {
   useEffect(() => {
     if (state.phase !== "finished") return;
     const { valid, invalid, unassessed } = state.completed;
+    const completedSessionId = lastCompletedSessionIdRef.current || undefined;
     const result: WorkoutResult = {
+      ...(completedSessionId
+        ? { sessionId: completedSessionId, lastCompletedSessionId: completedSessionId }
+        : {}),
       planName,
       exerciseNames: state.completedNames,
       totalExercises: state.completedNames.length,
@@ -213,8 +381,22 @@ function Session() {
         })),
     };
     sessionStorage.setItem(WORKOUT_RESULT_KEY, JSON.stringify(result));
-    void navigate({ to: "/hasil", replace: true });
+    void navigate({
+      to: "/hasil",
+      ...(completedSessionId ? { search: { sessionId: completedSessionId } } : {}),
+      replace: true,
+    });
   }, [state, planName, navigate]);
+
+  function handleAbandon() {
+    const activeSessionId = sessionId || sessionRef.current?.id || "";
+    void abandonWorkoutSession({
+      sessionId: activeSessionId,
+      phase: stateRef.current.phase,
+      token: localStorage.getItem(AUTH_TOKEN_KEY),
+    });
+    void navigate({ to: "/plan", replace: true });
+  }
 
   async function startSet() {
     if (!current || !tracking || startPending.current || stateRef.current.phase !== "setup") return;
@@ -229,7 +411,7 @@ function Session() {
           token: localStorage.getItem(AUTH_TOKEN_KEY),
           body: {
             exerciseId: current.exerciseId,
-            planId: current.planId,
+            ...(current.planId ? { planId: current.planId } : {}),
             sessionName: planName,
             modelVersion: MODEL_VERSION,
           },
@@ -335,13 +517,14 @@ function Session() {
               Workout {state.index + 1} dari {items.length}
             </p>
           </div>
-          <Link
-            to="/plan"
+          <button
+            type="button"
+            onClick={handleAbandon}
             aria-label="Akhiri sesi"
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black/40 backdrop-blur"
           >
             <X className="h-5 w-5" />
-          </Link>
+          </button>
         </div>
       </header>
       {resting ? (
@@ -360,12 +543,13 @@ function Session() {
                 ? `Set ${state.set + 1} dimulai setelah istirahat. Bersiap di posisi atas.`
                 : `Berikutnya: ${items[state.index + 1]?.exercise.name ?? ""}`}
             </p>
-            <Link
-              to="/plan"
+            <button
+              type="button"
+              onClick={handleAbandon}
               className="mt-6 inline-block rounded-full border border-white/30 px-6 py-3 text-sm"
             >
               Akhiri sesi
-            </Link>
+            </button>
           </div>
         </div>
       ) : null}
